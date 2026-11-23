@@ -1,0 +1,1 @@
+Vendored from https://github.com/codylindley/shadcn-html @ 0964e09e16034e39a244589d457a866171991f1d (dist/). MIT license.

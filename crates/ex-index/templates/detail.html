@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ name }}</h1>
+    <p><span class="badge" data-variant="outline">{{ metric }}</span> · {{ dimension }} dimensions · {% if building %}<span class="badge" data-variant="secondary">building</span>{% else %}<span class="badge" data-variant="default">ready</span>{% endif %}</p>
+  </div>
+  <div class="row-actions">
+    <a class="btn" data-variant="default" href="/ui/indexes/{{ name }}/search">Search playground</a>
+    <form method="post" action="/ui/indexes/{{ name }}/build">
+      <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      <button class="btn" data-variant="secondary" type="submit" {% if building %}disabled{% endif %}>Rebuild</button>
+    </form>
+    <form method="post" action="/ui/indexes/{{ name }}/delete" onsubmit="return confirm('Delete index {{ name }} and all its vectors?');">
+      <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      <button class="btn" data-variant="destructive" type="submit">Delete index</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-stats">
+  <div class="card"><div class="card-content statistic"><p class="statistic-title">Vectors</p><p class="statistic-value">{{ count }}</p><p class="statistic-description">live &amp; searchable</p></div></div>
+  <div class="card"><div class="card-content statistic"><p class="statistic-title">In delta</p><p class="statistic-value">{{ delta_count }}</p><p class="statistic-description">not yet merged to disk</p></div></div>
+  <div class="card"><div class="card-content statistic"><p class="statistic-title">Deleted</p><p class="statistic-value">{{ deleted }}</p><p class="statistic-description">tombstones until rebuild</p></div></div>
+  <div class="card"><div class="card-content statistic"><p class="statistic-title">On disk</p><p class="statistic-value">{{ size }}</p><p class="statistic-description">built {{ built_at }}</p></div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Upsert vectors</h3><p class="card-description">JSON array of <code>{"id", "vector", "metadata"?}</code> records (or <code>{"vectors": [...]}</code>). Existing ids are replaced.</p></div>
+    <div class="card-content">
+      <form class="form" method="post" action="/ui/indexes/{{ name }}/upsert">
+        <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+        <div class="form-field">
+          <label class="label" for="records">Records</label>
+          <textarea class="textarea mono" id="records" name="records" rows="8" required placeholder='[{"id": "doc-1", "vector": [{{ example_vector }}], "metadata": {"lang": "en"}}]'></textarea>
+        </div>
+        <div class="form-actions"><button class="btn" data-variant="default" type="submit">Upsert</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Look up / delete by id</h3><p class="card-description">Fetch a stored vector and its metadata, or remove it.</p></div>
+    <div class="card-content stack">
+      <form class="inline-form" method="get" action="/ui/indexes/{{ name }}">
+        <div class="form-field">
+          <label class="label" for="lookup">Vector id</label>
+          <input class="input" id="lookup" name="id" required value="{{ lookup_id }}">
+        </div>
+        <button class="btn" data-variant="outline" type="submit">Look up</button>
+      </form>
+      {% if !lookup_json.is_empty() %}
+      <pre>{{ lookup_json }}</pre>
+      <form method="post" action="/ui/indexes/{{ name }}/delete-vector" onsubmit="return confirm('Delete vector?');">
+        <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+        <input type="hidden" name="id" value="{{ lookup_id }}">
+        <button class="btn" data-variant="destructive" data-size="sm" type="submit">Delete this vector</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="card-header"><h3 class="card-title">Configuration</h3></div>
+  <div class="card-content">
+    <dl class="kv">
+      <dt>metric</dt><dd>{{ metric }}</dd>
+      <dt>dimension</dt><dd>{{ dimension }}</dd>
+      <dt>R (max degree)</dt><dd>{{ cfg_r }}</dd>
+      <dt>L (build)</dt><dd>{{ cfg_l_build }}</dd>
+      <dt>α</dt><dd>{{ cfg_alpha }}</dd>
+      <dt>PQ sub-vectors</dt><dd>{{ cfg_pq }}</dd>
+      <dt>default l_search</dt><dd>{{ cfg_l_search }}</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

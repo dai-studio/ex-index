@@ -1,0 +1,33 @@
+[package]
+name = "ex-index-core"
+description = "In-house DiskANN (Vamana + PQ + on-disk layout) vector index engine for ex-index"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+rayon.workspace = true
+memmap2.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+criterion = { version = "0.8.2", default-features = false }
+
+[[bench]]
+name = "recall"
+harness = false
+
+[[bench]]
+name = "distance"
+harness = false
+
+[features]
+default = []
+# Use std::simd distance kernels (requires a nightly toolchain).
+simd = []

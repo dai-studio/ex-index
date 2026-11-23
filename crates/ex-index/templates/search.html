@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Search {{ name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Search playground</h1>
+    <p><a href="/ui/indexes/{{ name }}">{{ name }}</a> · <span class="badge" data-variant="outline">{{ metric }}</span> · {{ dimension }} dimensions · {{ score_hint }}</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-content">
+    <form class="form" method="post" action="/ui/indexes/{{ name }}/search">
+      <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      <div class="form-field">
+        <label class="label" for="vector">Query vector (JSON array of {{ dimension }} numbers)</label>
+        <textarea class="textarea mono" id="vector" name="vector" rows="4" required>{{ vector }}</textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-field">
+          <label class="label" for="k">k</label>
+          <input class="input" id="k" name="k" type="number" min="1" max="1000" value="{{ k }}">
+        </div>
+        <div class="form-field">
+          <label class="label" for="l_search">l_search <span class="label-hint">(optional, ≥ k)</span></label>
+          <input class="input" id="l_search" name="l_search" type="number" min="1" value="{{ l_search }}">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="label" for="filter">Metadata filter <span class="label-hint">(optional JSON object, e.g. {"lang": "en"})</span></label>
+        <input class="input mono" id="filter" name="filter" value="{{ filter }}">
+      </div>
+      <div class="form-actions"><button class="btn" data-variant="default" type="submit">Search</button></div>
+    </form>
+  </div>
+</div>
+
+{% if searched %}
+<div class="card" style="margin-top:16px">
+  <div class="card-header">
+    <h3 class="card-title">Results</h3>
+    <p class="card-description">{{ hits.len() }} hit{% if hits.len() != 1 %}s{% endif %} in {{ took }} ms</p>
+  </div>
+  <div class="card-content">
+    {% if hits.is_empty() %}
+    <p class="empty">No results.</p>
+    {% else %}
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr class="table-row">
+            <th class="table-head num">Rank</th>
+            <th class="table-head">Id</th>
+            <th class="table-head num">Score</th>
+            <th class="table-head">Metadata</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in hits %}
+          <tr class="table-row">
+            <td class="table-cell num">{{ h.rank }}</td>
+            <td class="table-cell"><a href="/ui/indexes/{{ name }}?id={{ h.id_q }}">{{ h.id }}</a></td>
+            <td class="table-cell num mono">{{ h.score }}</td>
+            <td class="table-cell mono">{{ h.metadata }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

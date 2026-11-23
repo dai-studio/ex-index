@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}New index{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Create index</h1>
+    <p>Dimension and metric are fixed once the index exists.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-content">
+    <form class="form" method="post" action="/ui/new">
+      <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      <div class="form-field">
+        <label class="label" for="name">Name</label>
+        <input class="input" id="name" name="name" required pattern="[a-z0-9_\-]{1,64}" maxlength="64" value="{{ name }}" placeholder="docs">
+        <p class="field-description">Lowercase letters, digits, <code>_</code> and <code>-</code>; up to 64 characters.</p>
+      </div>
+      <div class="form-field">
+        <label class="label" for="dimension">Dimension</label>
+        <input class="input" id="dimension" name="dimension" type="number" min="1" max="4096" required value="{{ dimension }}" placeholder="768">
+      </div>
+      <div class="form-field">
+        <label class="label" for="metric">Metric</label>
+        <select class="select" id="metric" name="metric">
+          <option value="cosine" {% if metric == "cosine" %}selected{% endif %}>cosine (similarity, higher is better)</option>
+          <option value="euclidean" {% if metric == "euclidean" %}selected{% endif %}>euclidean (L2 distance, lower is better)</option>
+          <option value="dot" {% if metric == "dot" %}selected{% endif %}>dot (inner product, higher is better)</option>
+        </select>
+      </div>
+      <details class="advanced">
+        <summary>Advanced parameters (leave blank for defaults)</summary>
+        <div class="grid-2">
+          <div class="form-field">
+            <label class="label" for="r">R — max graph degree</label>
+            <input class="input" id="r" name="r" type="number" min="2" max="512" placeholder="64" value="{{ r }}">
+          </div>
+          <div class="form-field">
+            <label class="label" for="l_build">L — build candidate list</label>
+            <input class="input" id="l_build" name="l_build" type="number" min="1" max="5000" placeholder="100" value="{{ l_build }}">
+          </div>
+          <div class="form-field">
+            <label class="label" for="alpha">α — prune slack</label>
+            <input class="input" id="alpha" name="alpha" type="number" step="0.05" min="1" max="4" placeholder="1.2" value="{{ alpha }}">
+          </div>
+          <div class="form-field">
+            <label class="label" for="pq_subvectors">PQ m — bytes per vector</label>
+            <input class="input" id="pq_subvectors" name="pq_subvectors" type="number" min="1" max="4096" placeholder="ceil(dimension / 4)" value="{{ pq_subvectors }}">
+          </div>
+          <div class="form-field">
+            <label class="label" for="l_search">Default l_search</label>
+            <input class="input" id="l_search" name="l_search" type="number" min="1" max="5000" placeholder="100" value="{{ l_search }}">
+          </div>
+        </div>
+      </details>
+      <div class="form-actions">
+        <button class="btn" data-variant="default" type="submit">Create index</button>
+        <a class="btn" data-variant="outline" href="/ui">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

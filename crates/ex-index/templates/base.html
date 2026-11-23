@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · ex-index</title>
+  <link rel="stylesheet" href="/assets/shadcn/default-semantic-tokens.css">
+  <link rel="stylesheet" href="/assets/shadcn/button.css">
+  <link rel="stylesheet" href="/assets/shadcn/card.css">
+  <link rel="stylesheet" href="/assets/shadcn/table.css">
+  <link rel="stylesheet" href="/assets/shadcn/input.css">
+  <link rel="stylesheet" href="/assets/shadcn/textarea.css">
+  <link rel="stylesheet" href="/assets/shadcn/select.css">
+  <link rel="stylesheet" href="/assets/shadcn/label.css">
+  <link rel="stylesheet" href="/assets/shadcn/form.css">
+  <link rel="stylesheet" href="/assets/shadcn/badge.css">
+  <link rel="stylesheet" href="/assets/shadcn/alert.css">
+  <link rel="stylesheet" href="/assets/shadcn/statistic.css">
+  <link rel="stylesheet" href="/assets/shadcn/separator.css">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/ui">ex-index<small>v{{ layout.version }}</small></a>
+      <nav class="nav" aria-label="Main">
+        <a class="btn" data-variant="ghost" data-size="sm" href="/ui">Indexes</a>
+        <a class="btn" data-variant="ghost" data-size="sm" href="/ui/new">New index</a>
+        {% if layout.auth_enabled %}
+        <form method="post" action="/ui/logout">
+          <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+          <button class="btn" data-variant="outline" data-size="sm" type="submit">Log out</button>
+        </form>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    {% if !layout.flash_msg.is_empty() %}
+    <div class="alert flash" role="status">
+      <div class="alert-content"><p class="alert-description">{{ layout.flash_msg }}</p></div>
+    </div>
+    {% endif %}
+    {% if !layout.flash_err.is_empty() %}
+    <div class="alert flash" data-variant="destructive" role="alert">
+      <div class="alert-content"><h5 class="alert-title">Error</h5><p class="alert-description">{{ layout.flash_err }}</p></div>
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

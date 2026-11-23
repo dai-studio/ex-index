@@ -1,0 +1,611 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:dai="https://dai.studio/schema/dai/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" name="ex-index" targetNamespace="https://dai.studio/workflow">
+  <bpmn:process id="Process_1" name="ex-index" isExecutable="false">
+    <bpmn:extensionElements>
+      <dai:workflowMeta description="Design spec for ex-index: a single-binary Rust vector search server (in-house DiskANN: Vamana + PQ + on-disk layout) with a versioned JSON REST API, optional bearer API key, and a server-rendered shadcn-html admin UI. Supports cosine, euclidean and dot-product search over vectors with JSON metadata. Build sequence lives in plan.dai." version="0.1.0">
+        <dai:taskTypeEntry type="dai.types.software.dependency" stepType="dependency" description="An external library, package, service, API, or resource the project relies on. Documents the source, version, type, and license for dependency management and compliance." />
+        <dai:taskTypeEntry type="dai.types.ai.context" stepType="context" description="Background knowledge, grounding data, or reference material that informs downstream steps. Does not produce output itself — it shapes how the AI reasons." />
+        <dai:taskTypeEntry type="dai.types.ai.rule" stepType="rule" description="A constraint, policy, or business rule the AI must respect and enforce throughout the workflow. Scope, priority, and enforcement level determine how strictly it applies." />
+        <dai:taskTypeEntry type="dai.types.software.decision" stepType="" description="A technical or architecture decision record (ADR): the context, the options considered, the decision and its consequences. For business decisions use Business → Decision." />
+        <dai:taskTypeEntry type="dai.types.software.component" stepType="component" description="A UI or software component — its type, props/interface, and usage description. Use it to document your component library, design system elements, or reusable building blocks." />
+        <dai:taskTypeEntry type="dai.types.software.model" stepType="model" description="A data schema or structured type definition. Documents the shape of data flowing through the system and the notation used." />
+        <dai:taskTypeEntry type="dai.types.software.service" stepType="service" description="An external or internal service — its base URL, auth scheme, and version. Provides the context for API Endpoints that call it and documents service boundaries in a distributed system." />
+        <dai:taskTypeEntry type="dai.types.software.api-endpoint" stepType="api-endpoint" description="Defines a REST or GraphQL API endpoint — its method, path, auth, and request/response schemas." />
+        <dai:taskTypeEntry type="dai.types.software.config" stepType="" description="Configuration for a service or environment: settings, feature switches and secret references, and where they come from." />
+        <dai:taskTypeEntry type="dai.types.business.requirement" stepType="requirement" description="A business or functional requirement with priority, source, acceptance criteria, and status. Bridges business goals and technical delivery using the MoSCoW prioritisation framework." />
+        <dai:taskTypeEntry type="dai.types.software.test" stepType="test" description="A test case or verification condition — documents what is being tested, how to run it, and what constitutes a pass." />
+        <dai:taskTypeEntry type="dai.types.business.risk-item" stepType="risk" description="A potential threat or uncertainty that could negatively affect the project or outcome. Tracks probability, impact, and mitigation." />
+      </dai:workflowMeta>
+    </bpmn:extensionElements>
+    <bpmn:subProcess id="task_gtqssmeo" name="Environment" dai:type="dai.types.software.environment" dai:stepType="environment" dai:notes="Toolchain, algorithm references and crates the single-binary server is built from.">
+      <bpmn:extensionElements>
+        <dai:fields>
+          <dai:field key="envType">local</dai:field>
+        </dai:fields>
+      </bpmn:extensionElements>
+      <bpmn:task id="task_9g19wctk" name="Rust" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:notes="Implement everything in Rust. No C/C++ FFI so the binary cross-compiles to any tier-1/2 target." dai:version="stable (edition 2021)" dai:package="rust (stable toolchain)" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="Implementation language; produces one static binary per target triple." />
+      <bpmn:task id="task_h5oppkvj" name="DiskANN (algorithm)" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:notes="Algorithm reference only — implemented in-house in Rust (see decision &#39;Own DiskANN implementation&#39;). Do not link Microsoft&#39;s C++ library." dai:package="DiskANN / Vamana paper (Subramanya et al., NeurIPS 2019)" dai:dependencyType="optional" dai:license="n/a (algorithm reference)" dai:purpose="Indexing algorithm: Vamana graph + PQ-compressed in-RAM vectors + SSD-resident full vectors and adjacency." />
+      <bpmn:task id="task_1oi3av4r" name="REST API" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:notes="Use REST for all service interactions" dai:package="HTTP/1.1 + JSON" dai:dependencyType="runtime" dai:purpose="All service interactions (index CRUD, ingest, search) go through versioned /v1 JSON endpoints." />
+      <bpmn:task id="task_fmnywgoz" name="HTML (server-side)" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:notes="Use HTML for all UI on the server with server-side templating. No SPA / JS build step." dai:version="0.12" dai:package="askama" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="Compile-time checked server-side HTML templates for the admin UI." />
+      <bpmn:task id="task_szbt858b" name="shadcn-html" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:notes="Use shadcn for HTML for all UI elements" dai:package="https://github.com/codylindley/shadcn-html" dai:dependencyType="runtime" dai:license="MIT" dai:purpose="UI component styles/markup for every admin UI element; assets embedded into the binary." />
+      <bpmn:task id="task_cygfs1ny" name="axum + tokio" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="axum 0.7 / tokio 1" dai:package="axum, tokio, tower-http" dai:dependencyType="runtime" dai:license="MIT" dai:purpose="Async HTTP server, routing, middleware (auth, tracing, compression)." />
+      <bpmn:task id="task_zun3kh0b" name="serde" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="1" dai:package="serde, serde_json" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="JSON (de)serialization of API bodies, metadata and index manifests." />
+      <bpmn:task id="task_wlna795e" name="memmap2" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="0.9" dai:package="memmap2" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="Memory-map the on-disk graph/vector files for DiskANN beam search." />
+      <bpmn:task id="task_wzaw442g" name="rayon" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="1" dai:package="rayon" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="Parallel Vamana graph build and PQ codebook training." />
+      <bpmn:task id="task_9oj8d4ya" name="clap" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="4" dai:package="clap (derive, env)" dai:dependencyType="runtime" dai:license="MIT OR Apache-2.0" dai:purpose="CLI flags with env-var fallbacks for server config." />
+      <bpmn:task id="task_cj6072zf" name="tracing" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="0.1 / 0.3" dai:package="tracing, tracing-subscriber" dai:dependencyType="runtime" dai:license="MIT" dai:purpose="Structured logs and request spans." />
+      <bpmn:task id="task_ks8mguqd" name="rust-embed" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:version="8" dai:package="rust-embed" dai:dependencyType="runtime" dai:license="MIT" dai:purpose="Bundle shadcn-html CSS/JS and static assets into the single binary." />
+      <bpmn:task id="task_srq3pqhm" name="reqwest + criterion" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:package="reqwest, criterion" dai:dependencyType="dev" dai:license="MIT OR Apache-2.0" dai:purpose="Integration tests against the running server; recall/latency benchmarks." />
+      <bpmn:task id="task_ftzzzlyv" name="metrics" dai:type="dai.types.software.dependency" dai:stepType="dependency" dai:package="metrics, metrics-exporter-prometheus" dai:dependencyType="runtime" dai:license="MIT" dai:purpose="Counters/histograms exposed at /metrics in Prometheus text format." />
+    </bpmn:subProcess>
+    <bpmn:task id="task_b6rl5wwq" name="Goal" dai:type="dai.types.ai.context" dai:stepType="context" dai:source="manual" dai:format="text" dai:scope="global" dai:content="A vector index for semantic search in Rust as a single binary server on a port. The service runs on any platform Rust can target and allows end users to create an index, populate it with embedding vectors + JSON metadata, and search for similarity via cosine, euclidean distance, and dot product. " />
+    <bpmn:subProcess id="task_g5vhaf26" name="Rules" dai:notes="Hard constraints every implementation step must respect.">
+      <bpmn:task id="task_v0oim3n2" name="Single static binary" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Ship one self-contained executable per target (linux/macos/windows, x86_64 + aarch64). No C/C++ FFI, no runtime asset files: templates and shadcn-html assets are embedded." dai:scope="global" dai:rulePriority="critical" dai:enforcement="hard" />
+      <bpmn:task id="task_xew7c8mh" name="All state in --data-dir" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Every persisted byte lives under the configured data directory (one sub-directory per index). The server must restart and recover all indexes from it." dai:scope="global" dai:rulePriority="high" dai:enforcement="hard" />
+      <bpmn:task id="task_f67l7s5z" name="Fixed dimension &#38; metric" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Each index has a fixed f32 dimension (1..=4096) and a metric (cosine | euclidean | dot) chosen at creation and immutable afterwards. Reject with 400: wrong length, any NaN/±inf component, or a zero-norm vector in a cosine index." dai:scope="global" dai:rulePriority="critical" dai:enforcement="hard" />
+      <bpmn:task id="task_7zda4c7w" name="Score semantics" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Scores are raw per metric; results always sorted best-first. Cosine: vectors L2-normalized on ingest, score = cosine similarity (higher is better). Dot: score = raw inner product of the ORIGINAL vectors (higher is better). Euclidean: score = true L2 distance, sqrt applied (lower is better). Internally ranking uses squared L2 / transformed spaces; conversion to the public score happens only at output." dai:scope="global" dai:rulePriority="high" dai:enforcement="hard" />
+      <bpmn:task id="task_sbfs1052" name="Versioned JSON REST" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="All programmatic access is JSON over HTTP under /v1. Errors use {&#34;error&#34;:{&#34;code&#34;,&#34;message&#34;}} with proper status codes." dai:scope="global" dai:rulePriority="high" dai:enforcement="hard" />
+      <bpmn:task id="task_qfylzhgi" name="Server-rendered UI only" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Admin UI is server-side HTML (askama) styled with shadcn-html. Progressive enhancement only; no SPA framework or JS build step." dai:scope="global" dai:rulePriority="high" dai:enforcement="hard" />
+      <bpmn:task id="task_06b1jcd3" name="Vector IDs are strings" dai:type="dai.types.ai.rule" dai:stepType="rule" dai:notes="Users supply string IDs; upsert replaces an existing ID. Internally map to dense u32 slots." dai:scope="global" dai:rulePriority="medium" dai:enforcement="hard" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_nxde8qvc" name="Decisions" dai:notes="Accepted architecture decisions.">
+      <bpmn:task id="task_xu2yo5l2" name="Own DiskANN implementation" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="DiskANN reference impl is C++ with OS-specific I/O (libaio/Windows IO); FFI breaks the single-binary, any-target goal." dai:decision="Implement Vamana graph, PQ and the on-disk layout in Rust in the `core` crate." dai:consequences="More engineering and a recall benchmark is required; full control over storage format and portability.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="options">1) FFI to Microsoft DiskANN  2) Third-party Rust crate  3) In-house Rust Vamana + PQ + disk layout</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_isyo1765" name="Optional API key" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="Mostly local/self-hosted use, but must be safe to expose." dai:decision="If --api-key / EX_INDEX_API_KEY is set, every /v1, /ui and /metrics request requires `Authorization: Bearer &#60;key&#62;`; the UI login form instead sets an HttpOnly, SameSite=Strict cookie containing an HMAC of the key, and UI form posts carry a CSRF token. Key compared in constant time. Unset = open. /healthz and /assets always open." dai:consequences="Simple; no multi-tenant isolation in v0.1.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="options">No auth | optional bearer key | full user accounts</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_q8o5ba8o" name="Per-index storage layout" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="Need restart-safe persistence without an external DB." dai:decision="&#60;data-dir&#62;/&#60;index&#62;/: manifest.json (config+stats), graph.bin (main index: header + multi-sector node records holding full vectors + neighbors), pq.bin (codebooks + codes for main), ids.bin (string id &#60;-&#62; slot), tombstones.bin, metadata.log (append-only JSON + in-memory offset map), wal.log (un-merged upserts/deletes; delta vectors are rebuilt from it on start). Full vectors are stored once. Fixed little-endian format." dai:consequences="Index directories are portable across hosts/OSes; compaction writes new files to a temp dir and swaps atomically via rename (mmaps closed first on Windows)." />
+      <bpmn:task id="task_py9kyunq" name="Delta buffer + rebuild" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="DiskANN&#39;s static build is best quality; FreshDiskANN-style streaming inserts are complex." dai:decision="Upserts/deletes append to the WAL (fsync before ack) and go to an in-memory Vamana delta. Upserting an existing id tombstones its old slot. Queries search main + delta, merge, drop tombstones. When delta exceeds --delta-threshold (or POST /build), a background rebuild snapshots main+delta; writes arriving during the rebuild go to a fresh delta generation. Swap happens under a short write lock; the WAL is truncated to the new generation." dai:consequences="Writes are durable immediately and searchable immediately; rebuild cost is amortized." />
+      <bpmn:task id="task_tgesfeyx" name="Tombstone deletes" dai:type="dai.types.software.decision" dai:status="accepted" dai:decision="Deletes mark a tombstone bitset; tombstoned nodes are traversed but filtered from results. Consolidation happens during rebuild." dai:consequences="O(1) deletes; recall may dip slightly until next rebuild." />
+      <bpmn:task id="task_jpwo9vqu" name="Dot via MIPS→L2" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="Vamana&#39;s RobustPrune assumes a metric; raw inner product is not one, so graphs built on it lose recall." dai:decision="For dot indexes, append one coordinate sqrt(M² − ‖x‖²) to each stored vector (M = max norm seen; rebuild re-computes M) and 0 to queries; build and search in L2. Report the raw dot of the original vectors as the score." dai:consequences="Stored dimension is d+1; if a new vector exceeds M it is held in the delta with exact dot scoring until the next rebuild.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="options">Graph on raw dot | MIPS→L2 transform | require normalized input</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_6mctm77l" name="Small-index brute force" dai:type="dai.types.software.decision" dai:status="accepted" dai:context="PQ needs ≥ 256 training vectors and graph/disk overhead is wasteful for tiny indexes." dai:decision="Indexes below 10,000 live vectors are served by exact brute-force search (WAL + in-memory vectors) with no graph/PQ. The first disk build happens automatically when the index crosses the threshold." dai:consequences="Exact results for small indexes; one code path switch to test." />
+      <bpmn:task id="task_lmqos97z" name="Repo &#38; CI" dai:type="dai.types.software.decision" dai:status="accepted" dai:decision="git init the project in Scaffold. GitHub Actions: fmt + clippy + test on ubuntu/macos/windows for every push; release workflow on tag cross-builds all targets and attaches binaries. Recall/latency benchmark runs locally only (not a CI gate) because timings are machine-dependent." dai:consequences="Release tagging requires a GitHub remote to be added." />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_ypgwudzm" name="Core Engine (core crate)" dai:notes="Library crate `ex-index-core` holding the DiskANN implementation; the server crate depends on it.">
+      <bpmn:task id="task_865aziip" name="distance" dai:type="dai.types.software.component" dai:stepType="component" dai:notes="Internal distances (lower = closer): cosine = 1 - dot on normalized vectors; euclidean = squared L2 (sqrt only when emitting the score); dot = squared L2 in the MIPS-transformed space (see decision &#39;Dot via MIPS→L2&#39;). Chunked loops written for auto-vectorization; optional std::simd behind a feature flag." dai:componentType="library" dai:propsInterface="trait Distance { fn dist(a:&#38;[f32], b:&#38;[f32]) -&#62; f32 }  enum Metric { Cosine, Euclidean, Dot }" />
+      <bpmn:task id="task_hg9xekmg" name="vamana" dai:type="dai.types.software.component" dai:stepType="component" dai:notes="Medoid entry point, random R-regular init, two passes (alpha=1 then alpha) of GreedySearch + RobustPrune, parallel with rayon and per-node locks. Also used as the in-memory delta index." dai:componentType="library" dai:propsInterface="struct VamanaParams { r: u32 /*64*/, l_build: u32 /*100*/, alpha: f32 /*1.2*/ }  fn build(&#38;Vectors, Metric, VamanaParams) -&#62; Graph  fn greedy_search(&#38;Graph, q, l) -&#62; Vec&#60;(u32,f32)&#62;" />
+      <bpmn:task id="task_4rjdotzf" name="pq" dai:type="dai.types.software.component" dai:stepType="component" dai:notes="Product quantization with k-means per sub-space (sampled training set). Compressed codes stay in RAM and drive graph navigation via asymmetric distance tables." dai:componentType="library" dai:propsInterface="struct PqCodebook { m: usize, ks: 256, centroids: Vec&#60;f32&#62; }  fn train(&#38;Vectors, m) -&#62; PqCodebook  fn encode(&#38;self, v) -&#62; [u8; m]  fn adc_table(&#38;self, q) -&#62; Vec&#60;f32&#62;" />
+      <bpmn:task id="task_g3mgfudx" name="disk" dai:type="dai.types.software.component" dai:stepType="component" dai:notes="Node record = header-free [vector f32 × d&#39;] [neighbor_count u32] [neighbors u32 × R], padded up to a multiple of 4096 bytes (multi-sector nodes when needed, so 4096-d is supported). d&#39; = dimension (+1 for dot indexes). File header (sector 0): magic, format version, metric, d&#39;, R, node_size, count, medoid. All integers/floats little-endian. Beam search navigates with PQ distances, reads node sectors via mmap, re-ranks with full vectors." dai:componentType="library" dai:propsInterface="struct DiskIndex { mmap: Mmap, pq: PqCodebook, codes: Vec&#60;u8&#62;, medoid: u32 }  fn search(&#38;self, q, k, l_search, beam_width) -&#62; Vec&#60;Hit&#62;" />
+      <bpmn:task id="task_zdnojqyn" name="store" dai:type="dai.types.software.component" dai:stepType="component" dai:notes="Index catalog and lifecycle: WAL append + fsync, string-id&#60;-&#62;slot map, metadata log, tombstones, delta buffer, background rebuild with atomic swap, recovery on startup. Optional metadata equality filter applied to candidates (over-fetch k*factor) before final top-k." dai:componentType="service" dai:propsInterface="struct Catalog { indexes: RwLock&#60;HashMap&#60;String, Arc&#60;Index&#62;&#62;&#62; }  impl Index { upsert, get, delete, search, rebuild, stats }" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_lesfumoc" name="Models" dai:notes="Wire / persisted data shapes (serde).">
+      <bpmn:task id="task_rinfusmk" name="IndexConfig" dai:type="dai.types.software.model" dai:stepType="model" dai:notes="name: str (^[a-z0-9_-]{1,64}$), dimension: int (1..=4096), metric: &#34;cosine&#34;|&#34;euclidean&#34;|&#34;dot&#34;, params?: { r: int=64, l_build: int=100, alpha: float=1.2, pq_subvectors: int=ceil(dimension/4) (last sub-vector zero-padded; must be 1..=dimension), l_search: int=100 }" dai:modelFormat="json-schema" />
+      <bpmn:task id="task_qmn3t201" name="VectorRecord" dai:type="dai.types.software.model" dai:stepType="model" dai:notes="id: str (1..256 chars), vector: list[float] (len = dimension), metadata?: dict (arbitrary JSON object, ≤ 64 KiB)" dai:modelFormat="json-schema" />
+      <bpmn:task id="task_zlpq3j0j" name="SearchRequest" dai:type="dai.types.software.model" dai:stepType="model" dai:notes="vector: list[float], k: int=10 (1..1000), l_search?: int (&#62;= k), filter?: dict (top-level metadata key == value, AND-ed), include_vector: bool=false, include_metadata: bool=true" dai:modelFormat="json-schema" />
+      <bpmn:task id="task_lcs0yxga" name="SearchHit" dai:type="dai.types.software.model" dai:stepType="model" dai:notes="id: str, score: float (see Score semantics rule), metadata?: dict, vector?: list[float].  Response: { hits: [SearchHit], took_ms: float }" dai:modelFormat="json-schema" />
+      <bpmn:task id="task_gkqfn7w5" name="IndexInfo" dai:type="dai.types.software.model" dai:stepType="model" dai:notes="config: IndexConfig, count: int, deleted: int, delta_count: int, status: &#34;ready&#34;|&#34;building&#34;, built_at?: datetime, size_bytes: int" dai:modelFormat="json-schema" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_qqgmv0qw" name="REST API" dai:notes="axum router. All /v1 routes require `Authorization: Bearer &#60;key&#62;` only when an API key is configured. JSON errors: {&#34;error&#34;:{&#34;code&#34;:&#34;not_found|invalid_argument|conflict|unauthorized|internal&#34;,&#34;message&#34;:str}}.">
+      <bpmn:task id="task_daxpnev3" name="ex-index server" dai:type="dai.types.software.service" dai:stepType="service" dai:notes="Single binary `ex-index serve`. Serves /v1 JSON API, /ui admin pages, /assets (embedded), /healthz, /metrics. Request body limit 64 MiB, ≤ 10k vectors per upsert. Graceful shutdown on SIGINT/SIGTERM: stop accepting, finish in-flight requests, fsync WALs." dai:version="v1" dai:authType="bearer" dai:baseUrl="http://0.0.0.0:7700">
+        <bpmn:outgoing>flow_az5bq4bk</bpmn:outgoing>
+        <bpmn:outgoing>flow_e0g91c0t</bpmn:outgoing>
+        <bpmn:outgoing>flow_no6etifi</bpmn:outgoing>
+        <bpmn:outgoing>flow_mezc1twn</bpmn:outgoing>
+        <bpmn:outgoing>flow_myxwm61s</bpmn:outgoing>
+        <bpmn:outgoing>flow_7irq6zvz</bpmn:outgoing>
+        <bpmn:outgoing>flow_u6weg80p</bpmn:outgoing>
+        <bpmn:outgoing>flow_ndxr4j3c</bpmn:outgoing>
+        <bpmn:outgoing>flow_d54879vl</bpmn:outgoing>
+        <bpmn:outgoing>flow_wynjz2vr</bpmn:outgoing>
+        <bpmn:outgoing>flow_pcq897ta</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="task_lou8g1mr" name="Create index" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="409 if the name exists; 400 on invalid dimension/metric/params." dai:method="POST" dai:path="/v1/indexes" dai:authType="bearer" dai:requestBody="IndexConfig" dai:responseBody="IndexInfo" dai:statusCode="201">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_az5bq4bk</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_m1odi9lb" name="List indexes" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:method="GET" dai:path="/v1/indexes" dai:authType="bearer" dai:responseBody="{ indexes: [IndexInfo] }" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_e0g91c0t</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_wzq11on2" name="Get index" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="404 if missing." dai:method="GET" dai:path="/v1/indexes/{name}" dai:authType="bearer" dai:responseBody="IndexInfo" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_no6etifi</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_3flubl7g" name="Delete index" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="Removes the index directory after closing mmaps." dai:method="DELETE" dai:path="/v1/indexes/{name}" dai:authType="bearer" dai:statusCode="204">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_mezc1twn</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_ruc6p1zj" name="Upsert vectors" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="Durable (WAL fsync) and searchable on return. Whole batch rejected with 400 if any vector has the wrong dimension or a non-finite value." dai:method="POST" dai:path="/v1/indexes/{name}/vectors" dai:authType="bearer" dai:requestBody="{ vectors: [VectorRecord] } (≤ 10k per request)" dai:responseBody="{ upserted: int }" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_myxwm61s</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_wqwwrvyw" name="Get vector" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:method="GET" dai:path="/v1/indexes/{name}/vectors/{id}" dai:authType="bearer" dai:responseBody="VectorRecord" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_7irq6zvz</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_dljfggu7" name="Delete vector" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="Tombstones the slot." dai:method="DELETE" dai:path="/v1/indexes/{name}/vectors/{id}" dai:authType="bearer" dai:statusCode="204">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_u6weg80p</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_3thfd20m" name="Search" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="Searches main disk index (or brute force for small indexes) + delta, merges, drops tombstones, applies filter with adaptive over-fetch, returns top-k best-first with raw per-metric scores." dai:method="POST" dai:path="/v1/indexes/{name}/search" dai:authType="bearer" dai:requestBody="SearchRequest" dai:responseBody="{ hits: [SearchHit], took_ms: float }" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_ndxr4j3c</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_4zyvfdik" name="Rebuild index" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:notes="Starts a background merge/compaction; 409 if a build is already running." dai:method="POST" dai:path="/v1/indexes/{name}/build" dai:authType="bearer" dai:responseBody="IndexInfo (status=building)" dai:statusCode="202">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_d54879vl</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_2prz3cnx" name="Health" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:method="GET" dai:path="/healthz" dai:authType="none" dai:responseBody="{ status: &#34;ok&#34;, version: str }" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_wynjz2vr</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:task id="task_8v8i8rej" name="Metrics" dai:type="dai.types.software.api-endpoint" dai:stepType="api-endpoint" dai:method="GET" dai:path="/metrics" dai:authType="bearer" dai:responseBody="Prometheus text: request counts/latency, per-index vector counts" dai:statusCode="200">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="service">ex-index server</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_pcq897ta</bpmn:incoming>
+      </bpmn:task>
+      <bpmn:sequenceFlow id="flow_az5bq4bk" sourceRef="task_daxpnev3" targetRef="task_lou8g1mr" />
+      <bpmn:sequenceFlow id="flow_e0g91c0t" sourceRef="task_daxpnev3" targetRef="task_m1odi9lb" />
+      <bpmn:sequenceFlow id="flow_no6etifi" sourceRef="task_daxpnev3" targetRef="task_wzq11on2" />
+      <bpmn:sequenceFlow id="flow_mezc1twn" sourceRef="task_daxpnev3" targetRef="task_3flubl7g" />
+      <bpmn:sequenceFlow id="flow_myxwm61s" sourceRef="task_daxpnev3" targetRef="task_ruc6p1zj" />
+      <bpmn:sequenceFlow id="flow_7irq6zvz" sourceRef="task_daxpnev3" targetRef="task_wqwwrvyw" />
+      <bpmn:sequenceFlow id="flow_u6weg80p" sourceRef="task_daxpnev3" targetRef="task_dljfggu7" />
+      <bpmn:sequenceFlow id="flow_ndxr4j3c" sourceRef="task_daxpnev3" targetRef="task_3thfd20m" />
+      <bpmn:sequenceFlow id="flow_d54879vl" sourceRef="task_daxpnev3" targetRef="task_4zyvfdik" />
+      <bpmn:sequenceFlow id="flow_wynjz2vr" sourceRef="task_daxpnev3" targetRef="task_2prz3cnx" />
+      <bpmn:sequenceFlow id="flow_pcq897ta" sourceRef="task_daxpnev3" targetRef="task_8v8i8rej" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_ti2zl698" name="Admin UI (/ui)" dai:notes="askama templates + shadcn-html components, served by the same binary. Forms post to thin handlers that call the same store functions as the REST API.">
+      <bpmn:task id="task_kxyk0s6a" name="Indexes page" dai:type="dai.types.software.component" dai:stepType="component" dai:componentType="page" dai:propsInterface="GET /ui — table: name, metric, dimension, count, status; actions: open, delete (confirm), rebuild" />
+      <bpmn:task id="task_aoex8fu4" name="Create index form" dai:type="dai.types.software.component" dai:stepType="component" dai:componentType="page" dai:propsInterface="GET/POST /ui/new — name, dimension, metric select, advanced params (R, L, alpha, PQ m)" />
+      <bpmn:task id="task_dyu7vxe4" name="Index detail" dai:type="dai.types.software.component" dai:stepType="component" dai:componentType="page" dai:propsInterface="GET /ui/indexes/{name} — stats cards, config, JSON textarea to upsert VectorRecords, lookup/delete by id" />
+      <bpmn:task id="task_h09holbn" name="Search playground" dai:type="dai.types.software.component" dai:stepType="component" dai:componentType="page" dai:propsInterface="GET/POST /ui/indexes/{name}/search — vector JSON input, k, l_search, filter JSON; results table (rank, id, score, metadata), timing" />
+    </bpmn:subProcess>
+    <bpmn:task id="task_pextnvvp" name="Server config" dai:type="dai.types.software.config" dai:notes="--host (EX_INDEX_HOST, 0.0.0.0), --port (EX_INDEX_PORT, 7700), --data-dir (EX_INDEX_DATA_DIR, ./data), --api-key (EX_INDEX_API_KEY, unset = auth off), --delta-threshold (50000), --log-level (info)." dai:path="ex-index serve [flags]" dai:source="clap" dai:format="cli flags + env" />
+    <bpmn:subProcess id="task_c6zgav4s" name="Requirements" dai:notes="v0.1.0 scope with acceptance criteria.">
+      <bpmn:task id="task_9np8dnbb" name="Manage indexes" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:source="Goal" dai:acceptanceCriteria="Create/list/get/delete via REST and UI; invalid config rejected with 400; duplicate name 409." />
+      <bpmn:task id="task_au43lmpv" name="Ingest vectors + metadata" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:source="Goal" dai:acceptanceCriteria="Batch upsert of 10k x 768-d vectors with JSON metadata succeeds; re-upsert replaces; get by id returns stored metadata; delete hides it from search." />
+      <bpmn:task id="task_qedjr7x9" name="Similarity search (3 metrics)" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:source="Goal" dai:acceptanceCriteria="Cosine, euclidean and dot indexes each return top-k matching brute-force ordering on a 1k-vector fixture (exact match at l_search &#62;= n)." />
+      <bpmn:task id="task_3wsadkmp" name="Durability" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:acceptanceCriteria="kill -9 after an acknowledged upsert, restart: all acknowledged vectors are present and searchable." />
+      <bpmn:task id="task_0kfy83b3" name="Recall" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:acceptanceCriteria="recall@10 &#62;= 0.95 vs brute force on 100k x 128-d random/normalized data with default params (l_search=100)." />
+      <bpmn:task id="task_umvq7hi2" name="Latency" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="should" dai:acceptanceCriteria="p99 search latency &#60; 10 ms for k=10 on 100k x 128-d on a modern laptop (single query, warm cache). Measured locally with the benchmark, not enforced in CI." />
+      <bpmn:task id="task_1y1gvjcs" name="Portable single binary" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="must" dai:source="Goal" dai:acceptanceCriteria="Release workflow builds x86_64 + aarch64 for linux (musl, static), macos and windows; each starts and passes /healthz with no other files present." />
+      <bpmn:task id="task_oh8i7lf0" name="Metadata filter" dai:type="dai.types.business.requirement" dai:stepType="requirement" dai:status="agreed" dai:priority="should" dai:acceptanceCriteria="filter {&#34;lang&#34;:&#34;en&#34;} returns only hits whose metadata.lang == &#34;en&#34;. Adaptive over-fetch (k×4, doubling up to l_search×8). Best-effort: highly selective filters may return fewer than k hits; this is documented. In brute-force mode the result is exact." />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_3dah2oc6" name="Tests" dai:notes="cargo test (unit+integration) and cargo bench (criterion) must pass in CI.">
+      <bpmn:task id="task_xxhn0aqo" name="Distance metrics" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="unit" dai:testStatus="not-run" dai:testSteps="Compare each metric against a naive reference on random vectors incl. zero/large-norm edge cases.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">abs error &lt; 1e-5; cosine normalization idempotent.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_zwcnssvr" name="Vamana invariants" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="unit" dai:testStatus="not-run" dai:testSteps="Build on 5k vectors; check out-degree &#60;= R, no self loops, graph reachable from medoid.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">All invariants hold; recall@10 &gt;= 0.98 in-memory.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_g5oxvguo" name="PQ round-trip" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="unit" dai:testStatus="not-run" dai:testSteps="Train, encode, decode; compare ADC distance to exact.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">Reconstruction MSE below threshold; ADC ranking correlates (Spearman &gt; 0.9).</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_rll2x5nr" name="REST CRUD + search" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="integration" dai:testStatus="not-run" dai:testSteps="Start server on random port with temp data-dir; exercise every endpoint with reqwest incl. error cases.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">Status codes and bodies match the API spec.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_baeve0rg" name="Restart persistence" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="integration" dai:testStatus="not-run" dai:testSteps="Upsert, delete some, rebuild, upsert more (delta), kill process, restart, search.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">Same results before and after restart; deleted ids absent.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_c9alauf1" name="Auth on/off" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="security" dai:testStatus="not-run" dai:testSteps="Run with and without --api-key; call /v1, /ui, /healthz with missing/wrong/correct token.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">Key set: 401 unless correct token (healthz always 200). Key unset: all open.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_57mwphx2" name="Recall &#38; latency bench" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="performance" dai:testStatus="not-run" dai:testSteps="Run locally (cargo bench): build 100k x 128 index for each metric, 1k queries, compute recall@10 vs brute force and p50/p99 latency.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">recall@10 &gt;= 0.95 for cosine, euclidean and dot; p99 &lt; 10 ms.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+      <bpmn:task id="task_1zq9xbb8" name="UI smoke" dai:type="dai.types.software.test" dai:stepType="test" dai:testType="e2e" dai:testStatus="not-run" dai:testSteps="GET each /ui page; submit create form, upsert form and search form.">
+        <bpmn:extensionElements>
+          <dai:fields>
+            <dai:field key="expectedResult">200 responses, rendered tables contain expected rows, assets load from /assets.</dai:field>
+          </dai:fields>
+        </bpmn:extensionElements>
+      </bpmn:task>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="task_lxum0s9y" name="Risks">
+      <bpmn:task id="task_xu9q81bm" name="Insert/update complexity" dai:type="dai.types.business.risk-item" dai:stepType="risk" dai:probability="medium" dai:impact="high" dai:mitigation="Delta buffer + background rebuild instead of FreshDiskANN in-place inserts; cover with restart-persistence test." />
+      <bpmn:task id="task_y1zmeq41" name="mmap portability (Windows)" dai:type="dai.types.business.risk-item" dai:stepType="risk" dai:probability="medium" dai:impact="medium" dai:mitigation="Use memmap2 only; close mmaps before rename/delete (Windows file locks); run integration tests on windows in CI." />
+      <bpmn:task id="task_rzena0ek" name="Build memory blow-up" dai:type="dai.types.business.risk-item" dai:stepType="risk" dai:probability="medium" dai:impact="medium" dai:mitigation="Build from mmapped vectors, PQ-train on a sample, cap rayon threads; document RAM needs per million vectors." />
+      <bpmn:task id="task_pdatetq2" name="Dot-product recall" dai:type="dai.types.business.risk-item" dai:stepType="risk" dai:probability="medium" dai:impact="medium" dai:mitigation="MIPS→L2 transform; recall bench covers dot; vectors exceeding max norm stay in delta with exact scoring until rebuild." />
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="task_gtqssmeo_di" bpmnElement="task_gtqssmeo" isExpanded="true">
+        <dc:Bounds x="64" y="-24" width="1280" height="256" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_9g19wctk_di" bpmnElement="task_9g19wctk">
+        <dc:Bounds x="94" y="16" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_h5oppkvj_di" bpmnElement="task_h5oppkvj">
+        <dc:Bounds x="234" y="16" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_1oi3av4r_di" bpmnElement="task_1oi3av4r">
+        <dc:Bounds x="374" y="16" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_fmnywgoz_di" bpmnElement="task_fmnywgoz">
+        <dc:Bounds x="514" y="16" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_b6rl5wwq_di" bpmnElement="task_b6rl5wwq">
+        <dc:Bounds x="54" y="-163" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_szbt858b_di" bpmnElement="task_szbt858b">
+        <dc:Bounds x="654" y="16" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_cygfs1ny_di" bpmnElement="task_cygfs1ny">
+        <dc:Bounds x="94" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_zun3kh0b_di" bpmnElement="task_zun3kh0b">
+        <dc:Bounds x="234" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_wlna795e_di" bpmnElement="task_wlna795e">
+        <dc:Bounds x="374" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_wzaw442g_di" bpmnElement="task_wzaw442g">
+        <dc:Bounds x="514" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_9oj8d4ya_di" bpmnElement="task_9oj8d4ya">
+        <dc:Bounds x="654" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_cj6072zf_di" bpmnElement="task_cj6072zf">
+        <dc:Bounds x="794" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_ks8mguqd_di" bpmnElement="task_ks8mguqd">
+        <dc:Bounds x="934" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_srq3pqhm_di" bpmnElement="task_srq3pqhm">
+        <dc:Bounds x="1074" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_g5vhaf26_di" bpmnElement="task_g5vhaf26" isExpanded="true">
+        <dc:Bounds x="44" y="260" width="918" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_v0oim3n2_di" bpmnElement="task_v0oim3n2">
+        <dc:Bounds x="74" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_xew7c8mh_di" bpmnElement="task_xew7c8mh">
+        <dc:Bounds x="198" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_f67l7s5z_di" bpmnElement="task_f67l7s5z">
+        <dc:Bounds x="322" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_7zda4c7w_di" bpmnElement="task_7zda4c7w">
+        <dc:Bounds x="446" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_sbfs1052_di" bpmnElement="task_sbfs1052">
+        <dc:Bounds x="570" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_qfylzhgi_di" bpmnElement="task_qfylzhgi">
+        <dc:Bounds x="694" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_06b1jcd3_di" bpmnElement="task_06b1jcd3">
+        <dc:Bounds x="818" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_nxde8qvc_di" bpmnElement="task_nxde8qvc" isExpanded="true">
+        <dc:Bounds x="990" y="260" width="1028" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_xu2yo5l2_di" bpmnElement="task_xu2yo5l2">
+        <dc:Bounds x="1020" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_isyo1765_di" bpmnElement="task_isyo1765">
+        <dc:Bounds x="1144" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_q8o5ba8o_di" bpmnElement="task_q8o5ba8o">
+        <dc:Bounds x="1268" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_py9kyunq_di" bpmnElement="task_py9kyunq">
+        <dc:Bounds x="1392" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_tgesfeyx_di" bpmnElement="task_tgesfeyx">
+        <dc:Bounds x="1516" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_ypgwudzm_di" bpmnElement="task_ypgwudzm" isExpanded="true">
+        <dc:Bounds x="44" y="480" width="670" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_865aziip_di" bpmnElement="task_865aziip">
+        <dc:Bounds x="74" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_hg9xekmg_di" bpmnElement="task_hg9xekmg">
+        <dc:Bounds x="198" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_4rjdotzf_di" bpmnElement="task_4rjdotzf">
+        <dc:Bounds x="322" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_g3mgfudx_di" bpmnElement="task_g3mgfudx">
+        <dc:Bounds x="446" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_zdnojqyn_di" bpmnElement="task_zdnojqyn">
+        <dc:Bounds x="570" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_lesfumoc_di" bpmnElement="task_lesfumoc" isExpanded="true">
+        <dc:Bounds x="750" y="480" width="670" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_rinfusmk_di" bpmnElement="task_rinfusmk">
+        <dc:Bounds x="780" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_qmn3t201_di" bpmnElement="task_qmn3t201">
+        <dc:Bounds x="904" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_zlpq3j0j_di" bpmnElement="task_zlpq3j0j">
+        <dc:Bounds x="1028" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_lcs0yxga_di" bpmnElement="task_lcs0yxga">
+        <dc:Bounds x="1152" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_gkqfn7w5_di" bpmnElement="task_gkqfn7w5">
+        <dc:Bounds x="1276" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_qqgmv0qw_di" bpmnElement="task_qqgmv0qw" isExpanded="true">
+        <dc:Bounds x="44" y="700" width="940" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_daxpnev3_di" bpmnElement="task_daxpnev3">
+        <dc:Bounds x="74" y="795" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_lou8g1mr_di" bpmnElement="task_lou8g1mr">
+        <dc:Bounds x="222" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_m1odi9lb_di" bpmnElement="task_m1odi9lb">
+        <dc:Bounds x="346" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_wzq11on2_di" bpmnElement="task_wzq11on2">
+        <dc:Bounds x="470" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_3flubl7g_di" bpmnElement="task_3flubl7g">
+        <dc:Bounds x="594" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_ruc6p1zj_di" bpmnElement="task_ruc6p1zj">
+        <dc:Bounds x="718" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_wqwwrvyw_di" bpmnElement="task_wqwwrvyw">
+        <dc:Bounds x="842" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_dljfggu7_di" bpmnElement="task_dljfggu7">
+        <dc:Bounds x="222" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_3thfd20m_di" bpmnElement="task_3thfd20m">
+        <dc:Bounds x="346" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_4zyvfdik_di" bpmnElement="task_4zyvfdik">
+        <dc:Bounds x="470" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_2prz3cnx_di" bpmnElement="task_2prz3cnx">
+        <dc:Bounds x="594" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_8v8i8rej_di" bpmnElement="task_8v8i8rej">
+        <dc:Bounds x="718" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_az5bq4bk_di" bpmnElement="flow_az5bq4bk">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="198" y="835" />
+        <di:waypoint x="198" y="780" />
+        <di:waypoint x="222" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_e0g91c0t_di" bpmnElement="flow_e0g91c0t">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="396" y="835" />
+        <di:waypoint x="396" y="820" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_no6etifi_di" bpmnElement="flow_no6etifi">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="520" y="835" />
+        <di:waypoint x="520" y="820" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_mezc1twn_di" bpmnElement="flow_mezc1twn">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="644" y="835" />
+        <di:waypoint x="644" y="820" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_myxwm61s_di" bpmnElement="flow_myxwm61s">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="768" y="835" />
+        <di:waypoint x="768" y="820" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_7irq6zvz_di" bpmnElement="flow_7irq6zvz">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="892" y="835" />
+        <di:waypoint x="892" y="820" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_u6weg80p_di" bpmnElement="flow_u6weg80p">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="198" y="835" />
+        <di:waypoint x="198" y="890" />
+        <di:waypoint x="222" y="890" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_ndxr4j3c_di" bpmnElement="flow_ndxr4j3c">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="396" y="835" />
+        <di:waypoint x="396" y="850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_d54879vl_di" bpmnElement="flow_d54879vl">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="520" y="835" />
+        <di:waypoint x="520" y="850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_wynjz2vr_di" bpmnElement="flow_wynjz2vr">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="644" y="835" />
+        <di:waypoint x="644" y="850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_pcq897ta_di" bpmnElement="flow_pcq897ta">
+        <di:waypoint x="174" y="835" />
+        <di:waypoint x="768" y="835" />
+        <di:waypoint x="768" y="850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_ti2zl698_di" bpmnElement="task_ti2zl698" isExpanded="true">
+        <dc:Bounds x="1030" y="700" width="550" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_kxyk0s6a_di" bpmnElement="task_kxyk0s6a">
+        <dc:Bounds x="1060" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_aoex8fu4_di" bpmnElement="task_aoex8fu4">
+        <dc:Bounds x="1184" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_dyu7vxe4_di" bpmnElement="task_dyu7vxe4">
+        <dc:Bounds x="1308" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_h09holbn_di" bpmnElement="task_h09holbn">
+        <dc:Bounds x="1432" y="740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_pextnvvp_di" bpmnElement="task_pextnvvp">
+        <dc:Bounds x="1650" y="890" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_c6zgav4s_di" bpmnElement="task_c6zgav4s" isExpanded="true">
+        <dc:Bounds x="44" y="1010" width="1042" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_9np8dnbb_di" bpmnElement="task_9np8dnbb">
+        <dc:Bounds x="74" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_au43lmpv_di" bpmnElement="task_au43lmpv">
+        <dc:Bounds x="198" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_qedjr7x9_di" bpmnElement="task_qedjr7x9">
+        <dc:Bounds x="322" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_3wsadkmp_di" bpmnElement="task_3wsadkmp">
+        <dc:Bounds x="446" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_0kfy83b3_di" bpmnElement="task_0kfy83b3">
+        <dc:Bounds x="570" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_umvq7hi2_di" bpmnElement="task_umvq7hi2">
+        <dc:Bounds x="694" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_1y1gvjcs_di" bpmnElement="task_1y1gvjcs">
+        <dc:Bounds x="818" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_oh8i7lf0_di" bpmnElement="task_oh8i7lf0">
+        <dc:Bounds x="942" y="1050" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_3dah2oc6_di" bpmnElement="task_3dah2oc6" isExpanded="true">
+        <dc:Bounds x="44" y="1230" width="1028" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_xxhn0aqo_di" bpmnElement="task_xxhn0aqo">
+        <dc:Bounds x="74" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_zwcnssvr_di" bpmnElement="task_zwcnssvr">
+        <dc:Bounds x="198" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_g5oxvguo_di" bpmnElement="task_g5oxvguo">
+        <dc:Bounds x="322" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_rll2x5nr_di" bpmnElement="task_rll2x5nr">
+        <dc:Bounds x="446" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_baeve0rg_di" bpmnElement="task_baeve0rg">
+        <dc:Bounds x="570" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_c9alauf1_di" bpmnElement="task_c9alauf1">
+        <dc:Bounds x="694" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_57mwphx2_di" bpmnElement="task_57mwphx2">
+        <dc:Bounds x="818" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_1zq9xbb8_di" bpmnElement="task_1zq9xbb8">
+        <dc:Bounds x="942" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_lxum0s9y_di" bpmnElement="task_lxum0s9y" isExpanded="true">
+        <dc:Bounds x="1126" y="1230" width="532" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_xu9q81bm_di" bpmnElement="task_xu9q81bm">
+        <dc:Bounds x="1156" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_y1zmeq41_di" bpmnElement="task_y1zmeq41">
+        <dc:Bounds x="1280" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_rzena0ek_di" bpmnElement="task_rzena0ek">
+        <dc:Bounds x="1404" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_jpwo9vqu_di" bpmnElement="task_jpwo9vqu">
+        <dc:Bounds x="1640" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_6mctm77l_di" bpmnElement="task_6mctm77l">
+        <dc:Bounds x="1764" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_lmqos97z_di" bpmnElement="task_lmqos97z">
+        <dc:Bounds x="1888" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_ftzzzlyv_di" bpmnElement="task_ftzzzlyv">
+        <dc:Bounds x="1214" y="122" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_pdatetq2_di" bpmnElement="task_pdatetq2">
+        <dc:Bounds x="1528" y="1270" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

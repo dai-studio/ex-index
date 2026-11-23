@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Indexes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Indexes</h1>
+    <p>{{ rows.len() }} index{% if rows.len() != 1 %}es{% endif %} in this data directory.</p>
+  </div>
+  <a class="btn" data-variant="default" href="/ui/new">Create index</a>
+</div>
+<div class="card">
+  <div class="card-content">
+    {% if rows.is_empty() %}
+    <p class="empty">No indexes yet. <a href="/ui/new">Create one</a> or use <code>POST /v1/indexes</code>.</p>
+    {% else %}
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr class="table-row">
+            <th class="table-head">Name</th>
+            <th class="table-head">Metric</th>
+            <th class="table-head num">Dimension</th>
+            <th class="table-head num">Vectors</th>
+            <th class="table-head">Status</th>
+            <th class="table-head num">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr class="table-row">
+            <td class="table-cell"><a href="/ui/indexes/{{ r.name }}"><strong>{{ r.name }}</strong></a></td>
+            <td class="table-cell"><span class="badge" data-variant="outline">{{ r.metric }}</span></td>
+            <td class="table-cell num">{{ r.dimension }}</td>
+            <td class="table-cell num">{{ r.count }}</td>
+            <td class="table-cell">
+              {% if r.building %}<span class="badge" data-variant="secondary">building</span>{% else %}<span class="badge" data-variant="default">ready</span>{% endif %}
+            </td>
+            <td class="table-cell">
+              <div class="row-actions">
+                <a class="btn" data-variant="outline" data-size="sm" href="/ui/indexes/{{ r.name }}">Open</a>
+                <form method="post" action="/ui/indexes/{{ r.name }}/build">
+                  <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+                  <button class="btn" data-variant="secondary" data-size="sm" type="submit" {% if r.building %}disabled{% endif %}>Rebuild</button>
+                </form>
+                <form method="post" action="/ui/indexes/{{ r.name }}/delete" onsubmit="return confirm('Delete index {{ r.name }} and all its vectors?');">
+                  <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+                  <button class="btn" data-variant="destructive" data-size="sm" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

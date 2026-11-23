@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:dai="https://dai.studio/schema/dai/1.0" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="https://dai.studio/workflow">
+  <bpmn:process id="Process_1" name="plan progress" isExecutable="false">
+    <bpmn:extensionElements>
+      <dai:workflowMeta description="" version="0.1.0" docId="c9eed95b-f71d-42c7-ab05-7ab96c8760d7" role="progress" planDoc="7c1eb168-125a-4b94-9110-7418a9a08541" planPath="/Users/ted/Dev/_dai/ex-index/plan.dai">
+        <dai:taskTypeEntry stepType="" description="A generic work item or activity in the process flow." />
+      </dai:workflowMeta>
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>flow_d6eezzo0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="task_pknu5kyu" name="git init + workspace" dai:notes="git init; Cargo workspace with crates/ex-index (bin+lib) and crates/ex-index-core (lib). Versions verified via cargo search (2026-11-23): axum 0.8.9 (design said 0.7 — latest used), tokio 1.54, tower-http 0.7, askama 0.16, rust-embed 8.14, memmap2 0.9.12, rayon 1.12, clap 4.6, metrics 0.24 + exporter 0.18, reqwest 0.13, criterion 0.8. No rand crate: in-house SplitMix64. shadcn-html CSS vendored @0964e09 into crates/ex-index/assets/shadcn." dai:agentStatus="done" dai:planRef="task_chary1ph">
+      <bpmn:incoming>flow_d6eezzo0</bpmn:incoming>
+      <bpmn:outgoing>flow_huv3i3y1</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_d6eezzo0" sourceRef="StartEvent_1" targetRef="task_pknu5kyu" />
+    <bpmn:task id="task_n0py2ube" name="Metrics (distance)" dai:notes="core/src/distance.rs: Metric enum, chunked l2sq/dot kernels (+ optional nightly `simd` feature), normalize, MIPS augment, score conversion. All internal graph/PQ/disk work uses squared L2 in build space (cosine normalized ⇒ ‖x−q‖²=2−2cos, equivalent ranking to 1−dot)." dai:agentStatus="done" dai:planRef="task_wpqdcoi5">
+      <bpmn:incoming>flow_huv3i3y1</bpmn:incoming>
+      <bpmn:outgoing>flow_wb5qc3vw</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_huv3i3y1" sourceRef="task_pknu5kyu" targetRef="task_n0py2ube" />
+    <bpmn:task id="task_bd7l9xr7" name="Brute-force index" dai:notes="core/src/brute.rs: BruteForce + bounded TopK collector." dai:agentStatus="done" dai:planRef="task_utd2d1ep">
+      <bpmn:incoming>flow_wb5qc3vw</bpmn:incoming>
+      <bpmn:outgoing>flow_c49n7ed9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_wb5qc3vw" sourceRef="task_n0py2ube" targetRef="task_bd7l9xr7" />
+    <bpmn:task id="task_ohm04af8" name="Recall harness" dai:notes="core/src/harness.rs: gaussian/uniform/normalized/varying-norm/clustered generators, ground_truth, recall_at_k, percentile." dai:agentStatus="done" dai:planRef="task_ak7go1jc">
+      <bpmn:incoming>flow_c49n7ed9</bpmn:incoming>
+      <bpmn:outgoing>flow_nrjvrnil</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_c49n7ed9" sourceRef="task_bd7l9xr7" targetRef="task_ohm04af8" />
+    <bpmn:task id="task_hun0nt2y" name="Distance tests" dai:notes="distance::tests — kernels vs f64 naive reference for d∈{1..4096} (rel err &#60; 1e-5), zero/large-norm edge cases, cosine normalization idempotent, score semantics per metric, MIPS ranking preserved. All pass." dai:agentStatus="done" dai:planRef="task_vntknaok">
+      <bpmn:incoming>flow_nrjvrnil</bpmn:incoming>
+      <bpmn:outgoing>flow_2lapg17b</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_nrjvrnil" sourceRef="task_ohm04af8" targetRef="task_hun0nt2y" />
+    <bpmn:task id="task_m3uxbs04" name="API models + validation" dai:notes="core/src/models.rs: IndexConfig (+CreateIndexRequest with defaults), VectorRecord, SearchRequest, SearchHit, IndexInfo, filter_matches. Ranges chosen where design is silent: r 2..=512, l_build/l_search 1..=5000, alpha 1..=4.&#10;6 unit tests pass (defaults, invalid configs, vector/record validation, search request ranges, filter semantics)." dai:agentStatus="done" dai:planRef="task_wlikz09c">
+      <bpmn:incoming>flow_2lapg17b</bpmn:incoming>
+      <bpmn:outgoing>flow_93gddpnb</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_2lapg17b" sourceRef="task_hun0nt2y" targetRef="task_m3uxbs04" />
+    <bpmn:task id="task_gw38hh37" name="Graph + medoid / GreedySearch / RobustPrune + build" dai:notes="core/src/vamana.rs: Graph with per-node parking_lot RwLock adjacency, centroid-nearest medoid, random R-regular init, two-pass (α=1, α) parallel rayon build, bounded CandList greedy search, RobustPrune (pool cap 750), insert_batch for the delta index." dai:agentStatus="done" dai:planRef="task_a4shf1cy">
+      <bpmn:incoming>flow_93gddpnb</bpmn:incoming>
+      <bpmn:outgoing>flow_u5nw8u4a</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_93gddpnb" sourceRef="task_m3uxbs04" targetRef="task_gw38hh37" />
+    <bpmn:task id="task_ootn0xtb" name="GreedySearch" dai:notes="Graph::greedy_search(q, L) in vamana.rs (shared with build via search_inner)." dai:agentStatus="done" dai:planRef="task_k9jit2ib">
+      <bpmn:incoming>flow_u5nw8u4a</bpmn:incoming>
+      <bpmn:outgoing>flow_t9r99jc3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_u5nw8u4a" sourceRef="task_gw38hh37" targetRef="task_ootn0xtb" />
+    <bpmn:task id="task_563ol0kj" name="RobustPrune + build" dai:agentStatus="done" dai:planRef="task_xz8egsn1">
+      <bpmn:incoming>flow_t9r99jc3</bpmn:incoming>
+      <bpmn:outgoing>flow_67vf0kd6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_t9r99jc3" sourceRef="task_ootn0xtb" targetRef="task_563ol0kj" />
+    <bpmn:task id="task_9zvvc51p" name="Vamana tests" dai:notes="5k×32 build: out-degree ≤ R, no self loops/dup edges, all nodes reachable from medoid, recall@10 ≥ 0.98 (L=100). Plus tiny-graph and incremental-insert (recall ≥ 0.95) tests. Pass." dai:agentStatus="done" dai:planRef="task_cdq4d0qy">
+      <bpmn:incoming>flow_67vf0kd6</bpmn:incoming>
+      <bpmn:outgoing>flow_4ryvcpv8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_67vf0kd6" sourceRef="task_563ol0kj" targetRef="task_9zvvc51p" />
+    <bpmn:task id="task_fr0dkc62" name="Dot via MIPS→L2" dai:notes="distance::mips_augment_into / query_to_build_space; vamana test dot_via_mips_recall_on_unnormalized_data: varying-norm data, graph in L2 on augmented d+1, exact-dot rerank → recall@10 ≥ 0.95 vs brute-force dot. Pass." dai:agentStatus="done" dai:planRef="task_c83e5jm8">
+      <bpmn:incoming>flow_4ryvcpv8</bpmn:incoming>
+      <bpmn:outgoing>flow_cywd9nrg</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_4ryvcpv8" sourceRef="task_9zvvc51p" targetRef="task_fr0dkc62" />
+    <bpmn:task id="task_gep8y2lu" name="Codebook training + Encode/ADC + PQ tests" dai:notes="core/src/pq.rs: per-subspace Lloyd k-means (ks = min(256, sample), 12 iters, ≤50k sample, parallel assignment), zero-padded last sub-vector, encode/encode_all/decode, ADC tables, binary (de)serialization." dai:agentStatus="done" dai:planRef="task_y25mqsp8">
+      <bpmn:incoming>flow_cywd9nrg</bpmn:incoming>
+      <bpmn:outgoing>flow_tf82izhb</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_cywd9nrg" sourceRef="task_fr0dkc62" targetRef="task_gep8y2lu" />
+    <bpmn:task id="task_ct7m7xpv" name="Encode + ADC" dai:agentStatus="done" dai:planRef="task_edqr9okh">
+      <bpmn:incoming>flow_tf82izhb</bpmn:incoming>
+      <bpmn:outgoing>flow_8rgrg0t0</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_tf82izhb" sourceRef="task_gep8y2lu" targetRef="task_ct7m7xpv" />
+    <bpmn:task id="task_p3ulx9p4" name="PQ tests" dai:notes="pq_round_trip_and_adc_ranking: reconstruction MSE &#60; 15% of data variance, ADC vs exact Spearman &#62; 0.9; padding + &#60;256 training vectors + serialization round-trip. Pass." dai:agentStatus="done" dai:planRef="task_3h56wem5">
+      <bpmn:incoming>flow_8rgrg0t0</bpmn:incoming>
+      <bpmn:outgoing>flow_j76pq4z3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_8rgrg0t0" sourceRef="task_ct7m7xpv" targetRef="task_p3ulx9p4" />
+    <bpmn:task id="task_dosum4y9" name="Disk format writer" dai:notes="core/src/disk.rs: 4 KiB header sector (magic, version, metric, d&#39;, R, node_size, nodes_per_sector, sectors_per_node, count, medoid, MIPS M). Deviation from a literal reading of the design: small records are PACKED floor(4096/node_size) per sector (never straddling a sector, as in DiskANN) instead of each padded to 4 KiB — 5× less disk for 128-d; records &#62; 4 KiB span whole sectors (4096-d supported). LE; temp file + fsync + rename." dai:agentStatus="done" dai:planRef="task_4labcrp6">
+      <bpmn:incoming>flow_j76pq4z3</bpmn:incoming>
+      <bpmn:outgoing>flow_hur30rx6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_j76pq4z3" sourceRef="task_p3ulx9p4" targetRef="task_dosum4y9" />
+    <bpmn:task id="task_12w6agor" name="mmap beam search + rerank + recall check" dai:notes="DiskGraph (memmap2) + DiskIndex::search: PQ-ADC navigation, beam_width expansions per round, every expanded node re-ranked with its full vector. Tests: on-disk vectors/neighbors equal in-memory graph; disk recall@10 ≥ 0.95 and within 0.03 of in-memory Vamana; multi-sector (1100-d) nodes; corrupt header rejected. Pass." dai:agentStatus="done" dai:planRef="task_rzmd6cp6">
+      <bpmn:incoming>flow_hur30rx6</bpmn:incoming>
+      <bpmn:outgoing>flow_9f99imuo</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_hur30rx6" sourceRef="task_dosum4y9" targetRef="task_12w6agor" />
+    <bpmn:task id="task_9u9r52hk" name="Rerank + recall check" dai:notes="See disk::tests::disk_round_trip_and_recall (vs brute force and in-memory Vamana)." dai:agentStatus="done" dai:planRef="task_5qyzivbn">
+      <bpmn:incoming>flow_9f99imuo</bpmn:incoming>
+      <bpmn:outgoing>flow_5sf5gwfa</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_9f99imuo" sourceRef="task_12w6agor" targetRef="task_9u9r52hk" />
+    <bpmn:task id="task_i12083zj" name="Catalog + manifest" dai:notes="core/src/store/mod.rs Catalog (BTreeMap under RwLock) over --data-dir; per-index manifest.json (config, main_gen, wal_start, built_at) written temp+rename+fsync = commit point. Main generation lives in main.&#60;gen&#62;/ (graph.bin, pq.bin, ids.bin, metadata.log, tombstones.bin) — a sub-directory instead of flat files so the swap is a single atomic manifest rename. Delete closes the index, waits for builder, removes dir (DELETED marker + cleanup at next start if Windows locks block it)." dai:agentStatus="done" dai:planRef="task_y9qudsi6">
+      <bpmn:incoming>flow_5sf5gwfa</bpmn:incoming>
+      <bpmn:outgoing>flow_5kglw68s</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_5sf5gwfa" sourceRef="task_9u9r52hk" targetRef="task_i12083zj" />
+    <bpmn:task id="task_8nlwsln1" name="ID map + metadata log" dai:notes="Per segment string id→u32 slot maps (main: ids.bin; deltas: in RAM). Main metadata in append-only metadata.log with (offset,len) per slot in ids.bin, read via pread; delta metadata in RAM (rebuilt from WAL)." dai:agentStatus="done" dai:planRef="task_r1v5xmcv">
+      <bpmn:incoming>flow_5kglw68s</bpmn:incoming>
+      <bpmn:outgoing>flow_5jaeegne</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_5kglw68s" sourceRef="task_i12083zj" targetRef="task_8nlwsln1" />
+    <bpmn:task id="task_g4sndauc" name="WAL + recovery" dai:notes="core/src/wal.rs: wal.&#60;gen&#62;.log, CRC32-framed binary records, one write+fsync per batch before ack; replay stops at torn/corrupt record and truncates. Recovery replays every gen ≥ manifest.wal_start, removes stale main.* dirs and consumed WALs. Fixed during testing: WAL cleanup now only after a committed build (a failed build must not drop WALs)." dai:agentStatus="done" dai:planRef="task_jfq7pej8">
+      <bpmn:incoming>flow_5jaeegne</bpmn:incoming>
+      <bpmn:outgoing>flow_1nf0ohb9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_5jaeegne" sourceRef="task_8nlwsln1" targetRef="task_g4sndauc" />
+    <bpmn:task id="task_owcggt2w" name="Delta buffer" dai:notes="core/src/store/delta.rs: in-memory vectors + incremental Vamana (insert_batch) once a main exists; ≤2048 slots scanned exactly. Dot: delta graph M fixed at creation, vectors above it kept in an exact-scan list. Upsert tombstones any older live copy; search merges main + frozen + active deltas." dai:agentStatus="done" dai:planRef="task_4fnqgkxz">
+      <bpmn:incoming>flow_1nf0ohb9</bpmn:incoming>
+      <bpmn:outgoing>flow_orj557em</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_1nf0ohb9" sourceRef="task_g4sndauc" targetRef="task_owcggt2w" />
+    <bpmn:task id="task_4b64umb1" name="Tombstones + rebuild" dai:notes="Bitset tombstones per segment (checkpointed to tombstones.bin on flush). start_build: rotate WAL + freeze active delta under wal+state locks, background std::thread builds main.&#60;gen&#62;.tmp → rename → manifest commit; swap under short write lock applying ids touched during the build as tombstones; old mmap dropped before old dir removal; 409 if already building; auto-trigger at --delta-threshold. Builder aborts on index delete." dai:agentStatus="done" dai:planRef="task_9tlovknd">
+      <bpmn:incoming>flow_orj557em</bpmn:incoming>
+      <bpmn:outgoing>flow_fb20e267</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_orj557em" sourceRef="task_owcggt2w" targetRef="task_4b64umb1" />
+    <bpmn:task id="task_0jdyzfkx" name="Metadata filter" dai:notes="Top-level equality AND filter; ANN mode over-fetch k×4 doubling up to l_search×8, best-effort; exact in brute-force mode. Test metadata_filter_exact_and_ann passes in both modes." dai:agentStatus="done" dai:planRef="task_oyvlfj2u">
+      <bpmn:incoming>flow_fb20e267</bpmn:incoming>
+      <bpmn:outgoing>flow_ss5xud12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_fb20e267" sourceRef="task_4b64umb1" targetRef="task_0jdyzfkx" />
+    <bpmn:task id="task_os78iv6b" name="Small-index mode" dai:notes="Exact brute force when no main exists or live &#60; 10,000 (StoreOptions.small_index_threshold); first disk build auto-triggered on crossing. Test small_index_auto_build_at_threshold (scaled thresholds) passes." dai:agentStatus="done" dai:planRef="task_mlm95e4c">
+      <bpmn:incoming>flow_ss5xud12</bpmn:incoming>
+      <bpmn:outgoing>flow_mrxo71hv</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_ss5xud12" sourceRef="task_0jdyzfkx" targetRef="task_os78iv6b" />
+    <bpmn:task id="task_6pqzfjhq" name="Persistence test (core)" dai:notes="Core: restart_persistence (upsert, delete, rebuild, delta upserts+deletes, crash without flush, reopen → identical results, deleted ids absent) and writes_during_build_are_kept pass. Process-level kill -9 test to follow with the server. Graceful shutdown (Catalog::shutdown) to be wired in the server.&#10;Process-level: crates/ex-index/tests/persistence.rs spawns the real binary, upserts 2000, deletes every 9th, rebuilds, upserts 300 more + deletes (delta &#38; main tombstones), SIGKILLs, restarts → same count, identical top-10 for 20 queries, deleted ids 404. Passes (covers &#39;Durability&#39; requirement)." dai:agentStatus="done" dai:planRef="task_6emj4264">
+      <bpmn:incoming>flow_mrxo71hv</bpmn:incoming>
+      <bpmn:outgoing>flow_9670frhi</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_mrxo71hv" sourceRef="task_os78iv6b" targetRef="task_6pqzfjhq" />
+    <bpmn:task id="task_qvf1cu98" name="CLI &#38; config" dai:notes="crates/ex-index/src/config.rs: `ex-index serve` (clap derive+env): --host/EX_INDEX_HOST 0.0.0.0, --port/EX_INDEX_PORT 7700, --data-dir/EX_INDEX_DATA_DIR ./data, --api-key/EX_INDEX_API_KEY (hidden value), --delta-threshold 50000, --log-level info; hidden --small-index-threshold (10000) testing knob." dai:agentStatus="done" dai:planRef="task_43ocb9fs">
+      <bpmn:incoming>flow_9670frhi</bpmn:incoming>
+      <bpmn:outgoing>flow_kmfte575</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_9670frhi" sourceRef="task_6pqzfjhq" targetRef="task_qvf1cu98" />
+    <bpmn:task id="task_qiio1onj" name="Logging &#38; errors" dai:notes="tracing-subscriber EnvFilter from --log-level (ANSI only on TTY), tower-http TraceLayer request spans. core::Error {InvalidArgument, NotFound, Conflict, Corrupt, Io, Internal} → code(); server ApiError maps to 400/404/409/500 (+401, 413, 415) with {error:{code,message}}; ApiJson extractor wraps JSON rejections." dai:agentStatus="done" dai:planRef="task_uioy39ni">
+      <bpmn:incoming>flow_kmfte575</bpmn:incoming>
+      <bpmn:outgoing>flow_08izkgwq</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_kmfte575" sourceRef="task_qvf1cu98" targetRef="task_qiio1onj" />
+    <bpmn:task id="task_u56ytuud" name="Graceful shutdown" dai:notes="shutdown_signal (Ctrl-C + SIGTERM) → axum with_graceful_shutdown (stop accepting, drain in-flight) → Catalog::shutdown (WAL fsync + tombstone checkpoint) → catalog dropped (mmaps closed). Verified manually with SIGINT." dai:agentStatus="done" dai:planRef="task_3imb7mz2">
+      <bpmn:incoming>flow_08izkgwq</bpmn:incoming>
+      <bpmn:outgoing>flow_t8qbq89b</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_08izkgwq" sourceRef="task_qiio1onj" targetRef="task_u56ytuud" />
+    <bpmn:task id="task_9ysfebuy" name="Router + error model" dai:notes="axum 0.8 router (lib.rs::router), DefaultBodyLimit 64 MiB (413 tested), ≤10k vectors per upsert (400 tested), gzip compression, JSON 404 fallback." dai:agentStatus="done" dai:planRef="task_rp2z18o9">
+      <bpmn:incoming>flow_t8qbq89b</bpmn:incoming>
+      <bpmn:outgoing>flow_5604g12a</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_t8qbq89b" sourceRef="task_u56ytuud" targetRef="task_9ysfebuy" />
+    <bpmn:task id="task_omwgadpp" name="Index endpoints" dai:notes="src/api.rs: POST /v1/indexes (201/400/409), GET /v1/indexes, GET /v1/indexes/{name} (404), DELETE (204). Store calls run on spawn_blocking." dai:agentStatus="done" dai:planRef="task_d538jy5l">
+      <bpmn:incoming>flow_5604g12a</bpmn:incoming>
+      <bpmn:outgoing>flow_533pbfki</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_5604g12a" sourceRef="task_9ysfebuy" targetRef="task_omwgadpp" />
+    <bpmn:task id="task_lycwgqd0" name="Vector endpoints" dai:notes="POST /vectors (whole batch rejected on any invalid record), GET/DELETE /vectors/{id}. 10k×768 batch with metadata test passes (needs compact floats to stay &#60; 64 MiB — documented)." dai:agentStatus="done" dai:planRef="task_iyybkjox">
+      <bpmn:incoming>flow_533pbfki</bpmn:incoming>
+      <bpmn:outgoing>flow_q7s7bbq9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_533pbfki" sourceRef="task_omwgadpp" targetRef="task_lycwgqd0" />
+    <bpmn:task id="task_f4u63qu4" name="Search + build" dai:notes="POST /search → {hits, took_ms}, raw per-metric scores best-first; POST /build → 202 IndexInfo(status=building), 409 if running." dai:agentStatus="done" dai:planRef="task_ur7wj52n">
+      <bpmn:incoming>flow_q7s7bbq9</bpmn:incoming>
+      <bpmn:outgoing>flow_wyp2rtot</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_q7s7bbq9" sourceRef="task_lycwgqd0" targetRef="task_f4u63qu4" />
+    <bpmn:task id="task_t2x2s1nr" name="API key middleware" dai:notes="src/auth.rs: bearer check on /v1 + /metrics (401 JSON), bearer-or-cookie on /ui (browser GET → 303 /ui/login). Constant-time compare via subtle on SHA-256 digests (no length leak). Hand-rolled HMAC-SHA256 (RFC 4231 vector tested). /healthz, /assets open." dai:agentStatus="done" dai:planRef="task_scu4yv7a">
+      <bpmn:incoming>flow_wyp2rtot</bpmn:incoming>
+      <bpmn:outgoing>flow_74l8mdth</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_wyp2rtot" sourceRef="task_f4u63qu4" targetRef="task_t2x2s1nr" />
+    <bpmn:task id="task_g5cxnxsq" name="Health + metrics" dai:notes="/healthz {status,version}; /metrics Prometheus text (metrics 0.24 + exporter 0.18, no HTTP listener feature): http_requests_total{method,route,status}, http_request_duration_seconds, ex_index_search_seconds, ex_index_vectors_upserted_total, per-index gauges vectors/deleted/delta/size/building." dai:agentStatus="done" dai:planRef="task_4iwvzrrj">
+      <bpmn:incoming>flow_74l8mdth</bpmn:incoming>
+      <bpmn:outgoing>flow_xewe0oo7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_74l8mdth" sourceRef="task_t2x2s1nr" targetRef="task_g5cxnxsq" />
+    <bpmn:task id="task_n2ejoapi" name="API + auth tests" dai:notes="tests/api.rs (CRUD+search+errors, 409 build conflict, 10k×768 ingest, 413 body) and tests/auth.rs (key set: 401 unless correct token on /v1,/ui,/metrics; healthz/assets 200; login cookie flow, forged cookie/CSRF rejected; key unset: all open). All pass with reqwest against a server on a random port." dai:agentStatus="done" dai:planRef="task_dfmbg28e">
+      <bpmn:incoming>flow_xewe0oo7</bpmn:incoming>
+      <bpmn:outgoing>flow_58cvxj4p</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_xewe0oo7" sourceRef="task_g5cxnxsq" targetRef="task_n2ejoapi" />
+    <bpmn:task id="task_jlrbt7si" name="Embed assets" dai:notes="shadcn-html tokens + 12 component CSS files vendored (MIT, commit 0964e09) + assets/app.css, embedded with rust-embed (mime-guess), served at /assets/{*path} with Cache-Control. No JS needed; lucide icons (CDN) intentionally not used to keep the binary self-contained." dai:agentStatus="done" dai:planRef="task_6o3nbxuv">
+      <bpmn:incoming>flow_58cvxj4p</bpmn:incoming>
+      <bpmn:outgoing>flow_dcgbt76a</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_58cvxj4p" sourceRef="task_n2ejoapi" targetRef="task_jlrbt7si" />
+    <bpmn:task id="task_it5yirc8" name="Base layout" dai:notes="templates/base.html (askama 0.16): top nav, flash messages (alert / destructive alert) from ?msg= / ?err= after PRG redirects, shadcn-html stylesheets." dai:agentStatus="done" dai:planRef="task_kjbk22nm">
+      <bpmn:incoming>flow_dcgbt76a</bpmn:incoming>
+      <bpmn:outgoing>flow_mkz4c8g9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_dcgbt76a" sourceRef="task_jlrbt7si" targetRef="task_it5yirc8" />
+    <bpmn:task id="task_emr2fiu3" name="Indexes + create" dai:notes="GET /ui table (name, metric, dimension, count, status; open / rebuild / delete with confirm()). GET/POST /ui/new with advanced params (R, L, α, PQ m, l_search); validation errors re-render the form with 400." dai:agentStatus="done" dai:planRef="task_6mg65plk">
+      <bpmn:incoming>flow_mkz4c8g9</bpmn:incoming>
+      <bpmn:outgoing>flow_le5opju7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_mkz4c8g9" sourceRef="task_it5yirc8" targetRef="task_emr2fiu3" />
+    <bpmn:task id="task_501f026j" name="Index detail" dai:notes="GET /ui/indexes/{name}: statistic cards (vectors, delta, deleted, size/built_at), config list, JSON upsert textarea (array | {vectors} | single record), lookup by id (?id=) + delete-by-id." dai:agentStatus="done" dai:planRef="task_8qbr7kiv">
+      <bpmn:incoming>flow_le5opju7</bpmn:incoming>
+      <bpmn:outgoing>flow_hzlg55nw</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_le5opju7" sourceRef="task_emr2fiu3" targetRef="task_501f026j" />
+    <bpmn:task id="task_d9ely48h" name="Search playground" dai:notes="GET/POST /ui/indexes/{name}/search: vector JSON, k, l_search, filter JSON → table (rank, id link, score, metadata) + timing; metric-specific score hint." dai:agentStatus="done" dai:planRef="task_uimikv1s">
+      <bpmn:incoming>flow_hzlg55nw</bpmn:incoming>
+      <bpmn:outgoing>flow_x5ts1e19</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_hzlg55nw" sourceRef="task_501f026j" targetRef="task_d9ely48h" />
+    <bpmn:task id="task_l7s0j9gt" name="UI login" dai:notes="GET/POST /ui/login sets exidx_session=hex(HMAC-SHA256(key,&#39;ex-index-ui-session&#39;)); HttpOnly; SameSite=Strict; Path=/ui. POST /ui/logout clears. CSRF token = HMAC(random per-process secret, session) on every UI form post (also when auth is off); invalid → 403." dai:agentStatus="done" dai:planRef="task_9xt5ctdk">
+      <bpmn:incoming>flow_x5ts1e19</bpmn:incoming>
+      <bpmn:outgoing>flow_lq5ja0na</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_x5ts1e19" sourceRef="task_d9ely48h" targetRef="task_l7s0j9gt" />
+    <bpmn:task id="task_u4iuomhb" name="UI smoke tests" dai:notes="tests/ui.rs: every page 200, every layout stylesheet served from /assets as text/css, create form (valid + invalid), upsert form (valid + invalid JSON), lookup, search form (ranking + filter + bad vector 400), delete vector, rebuild, CSRF 403, delete index. Pass." dai:agentStatus="done" dai:planRef="task_mycou9oi">
+      <bpmn:incoming>flow_lq5ja0na</bpmn:incoming>
+      <bpmn:outgoing>flow_g80u9alc</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_lq5ja0na" sourceRef="task_l7s0j9gt" targetRef="task_u4iuomhb" />
+    <bpmn:task id="task_tm9f7oms" name="CI matrix" dai:notes=".github/workflows/ci.yml: lint job (fmt --check, clippy --all-targets -D warnings), test job on ubuntu/macos/windows (cargo test --workspace --locked + cargo bench --no-run). No perf gate. Not executed on GitHub yet (no remote); fmt/clippy/tests verified locally on macOS." dai:agentStatus="done" dai:planRef="task_dq9bk4z9">
+      <bpmn:incoming>flow_g80u9alc</bpmn:incoming>
+      <bpmn:outgoing>flow_f6pnn0jl</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_g80u9alc" sourceRef="task_u4iuomhb" targetRef="task_tm9f7oms" />
+    <bpmn:task id="task_qn28mwse" name="Recall &#38; latency bench" dai:notes="benches/recall.rs (Apple M4, 100k×128, 1k queries, k=10, defaults l_search=100). LATENCY MET everywhere: p99 ≤ 0.35 ms (target 10 ms). RECALL: low-rank (16-d latent) data PASS — cosine 1.000, euclidean 1.000, dot 0.958. i.i.d. Gaussian (literal &#39;random&#39; data) FAIL at l_search=100 — cosine 0.578, euclidean 0.745, dot 0.036. Full-rank random data is the known worst case for graph ANN (in-memory Vamana gives the same numbers, so it&#39;s not PQ/disk). At l_search=1000: cosine 0.994 / euclidean 0.963, p99 2.7 / 1.5 ms. i.i.d. dot stays poor (MIPS→L2 reduction limitation). Fixes made while benchmarking: (1) PQ split dims evenly — 129-d dot space with m=32 had ~6 all-padding sub-vectors; (2) inner-product ADC on original dims for dot (lowrank dot 0.78→0.92); (3) 64 max-norm entry points for dot search (→0.958). Needs a decision on the requirement wording / default l_search." dai:agentStatus="failed" dai:planRef="task_0nw81v9s">
+      <bpmn:incoming>flow_f6pnn0jl</bpmn:incoming>
+      <bpmn:outgoing>flow_wt0h15v4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_f6pnn0jl" sourceRef="task_tm9f7oms" targetRef="task_qn28mwse" />
+    <bpmn:task id="task_xjzg9op0" name="Cross-compile release" dai:notes=".github/workflows/release.yml on v* tags: x86_64/aarch64 linux-musl (native runners incl. ubuntu-24.04-arm, static check via ldd), aarch64+x86_64 apple-darwin, x86_64 + aarch64 windows-msvc (windows-11-arm). /healthz smoke test from an empty dir on every runnable target (x86_64-apple-darwin built but not smoke-tested on the arm runner). Packages tar.gz/zip + SHA256SUMS → GitHub release. Not run yet (no remote). Locally verified: 4 MB release binary serves /healthz, /ui, /assets with no other files." dai:agentStatus="done" dai:planRef="task_okjapuig">
+      <bpmn:incoming>flow_wt0h15v4</bpmn:incoming>
+      <bpmn:outgoing>flow_uz6ylp25</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_wt0h15v4" sourceRef="task_qn28mwse" targetRef="task_xjzg9op0" />
+    <bpmn:task id="task_c82zg2kc" name="Docs" dai:notes="README.md: quickstart, config table, concepts (params, scores, filter best-effort, lifecycle), full API reference with curl examples, UI, data-dir layout, RAM sizing per 1M vectors, benchmark table incl. the i.i.d. caveat, dev/CI/release. LICENSE-MIT, LICENSE-APACHE, CHANGELOG.md." dai:agentStatus="done" dai:planRef="task_t6j96udu">
+      <bpmn:incoming>flow_uz6ylp25</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_uz6ylp25" sourceRef="task_xjzg9op0" targetRef="task_c82zg2kc" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="82" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_pknu5kyu_di" bpmnElement="task_pknu5kyu">
+        <dc:Bounds x="268" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_d6eezzo0_di" bpmnElement="flow_d6eezzo0">
+        <di:waypoint x="188" y="100" />
+        <di:waypoint x="268" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_n0py2ube_di" bpmnElement="task_n0py2ube">
+        <dc:Bounds x="448" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_huv3i3y1_di" bpmnElement="flow_huv3i3y1">
+        <di:waypoint x="368" y="100" />
+        <di:waypoint x="448" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_bd7l9xr7_di" bpmnElement="task_bd7l9xr7">
+        <dc:Bounds x="628" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_wb5qc3vw_di" bpmnElement="flow_wb5qc3vw">
+        <di:waypoint x="548" y="100" />
+        <di:waypoint x="628" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_ohm04af8_di" bpmnElement="task_ohm04af8">
+        <dc:Bounds x="808" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_c49n7ed9_di" bpmnElement="flow_c49n7ed9">
+        <di:waypoint x="728" y="100" />
+        <di:waypoint x="808" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_hun0nt2y_di" bpmnElement="task_hun0nt2y">
+        <dc:Bounds x="988" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_nrjvrnil_di" bpmnElement="flow_nrjvrnil">
+        <di:waypoint x="908" y="100" />
+        <di:waypoint x="988" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_m3uxbs04_di" bpmnElement="task_m3uxbs04">
+        <dc:Bounds x="1168" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_2lapg17b_di" bpmnElement="flow_2lapg17b">
+        <di:waypoint x="1088" y="100" />
+        <di:waypoint x="1168" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_gw38hh37_di" bpmnElement="task_gw38hh37">
+        <dc:Bounds x="1348" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_93gddpnb_di" bpmnElement="flow_93gddpnb">
+        <di:waypoint x="1268" y="100" />
+        <di:waypoint x="1348" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_ootn0xtb_di" bpmnElement="task_ootn0xtb">
+        <dc:Bounds x="1528" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_u5nw8u4a_di" bpmnElement="flow_u5nw8u4a">
+        <di:waypoint x="1448" y="100" />
+        <di:waypoint x="1528" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_563ol0kj_di" bpmnElement="task_563ol0kj">
+        <dc:Bounds x="268" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_t9r99jc3_di" bpmnElement="flow_t9r99jc3">
+        <di:waypoint x="1578" y="140" />
+        <di:waypoint x="1578" y="170" />
+        <di:waypoint x="318" y="170" />
+        <di:waypoint x="318" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_9zvvc51p_di" bpmnElement="task_9zvvc51p">
+        <dc:Bounds x="448" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_67vf0kd6_di" bpmnElement="flow_67vf0kd6">
+        <di:waypoint x="368" y="240" />
+        <di:waypoint x="448" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_fr0dkc62_di" bpmnElement="task_fr0dkc62">
+        <dc:Bounds x="628" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_4ryvcpv8_di" bpmnElement="flow_4ryvcpv8">
+        <di:waypoint x="548" y="240" />
+        <di:waypoint x="628" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_gep8y2lu_di" bpmnElement="task_gep8y2lu">
+        <dc:Bounds x="808" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_cywd9nrg_di" bpmnElement="flow_cywd9nrg">
+        <di:waypoint x="728" y="240" />
+        <di:waypoint x="808" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_ct7m7xpv_di" bpmnElement="task_ct7m7xpv">
+        <dc:Bounds x="988" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_tf82izhb_di" bpmnElement="flow_tf82izhb">
+        <di:waypoint x="908" y="240" />
+        <di:waypoint x="988" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_p3ulx9p4_di" bpmnElement="task_p3ulx9p4">
+        <dc:Bounds x="1168" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_8rgrg0t0_di" bpmnElement="flow_8rgrg0t0">
+        <di:waypoint x="1088" y="240" />
+        <di:waypoint x="1168" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_dosum4y9_di" bpmnElement="task_dosum4y9">
+        <dc:Bounds x="1348" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_j76pq4z3_di" bpmnElement="flow_j76pq4z3">
+        <di:waypoint x="1268" y="240" />
+        <di:waypoint x="1348" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_12w6agor_di" bpmnElement="task_12w6agor">
+        <dc:Bounds x="1528" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_hur30rx6_di" bpmnElement="flow_hur30rx6">
+        <di:waypoint x="1448" y="240" />
+        <di:waypoint x="1528" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_9u9r52hk_di" bpmnElement="task_9u9r52hk">
+        <dc:Bounds x="268" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_9f99imuo_di" bpmnElement="flow_9f99imuo">
+        <di:waypoint x="1578" y="280" />
+        <di:waypoint x="1578" y="310" />
+        <di:waypoint x="318" y="310" />
+        <di:waypoint x="318" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_i12083zj_di" bpmnElement="task_i12083zj">
+        <dc:Bounds x="448" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_5sf5gwfa_di" bpmnElement="flow_5sf5gwfa">
+        <di:waypoint x="368" y="380" />
+        <di:waypoint x="448" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_8nlwsln1_di" bpmnElement="task_8nlwsln1">
+        <dc:Bounds x="628" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_5kglw68s_di" bpmnElement="flow_5kglw68s">
+        <di:waypoint x="548" y="380" />
+        <di:waypoint x="628" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_g4sndauc_di" bpmnElement="task_g4sndauc">
+        <dc:Bounds x="808" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_5jaeegne_di" bpmnElement="flow_5jaeegne">
+        <di:waypoint x="728" y="380" />
+        <di:waypoint x="808" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_owcggt2w_di" bpmnElement="task_owcggt2w">
+        <dc:Bounds x="988" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_1nf0ohb9_di" bpmnElement="flow_1nf0ohb9">
+        <di:waypoint x="908" y="380" />
+        <di:waypoint x="988" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_4b64umb1_di" bpmnElement="task_4b64umb1">
+        <dc:Bounds x="1168" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_orj557em_di" bpmnElement="flow_orj557em">
+        <di:waypoint x="1088" y="380" />
+        <di:waypoint x="1168" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_0jdyzfkx_di" bpmnElement="task_0jdyzfkx">
+        <dc:Bounds x="1348" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_fb20e267_di" bpmnElement="flow_fb20e267">
+        <di:waypoint x="1268" y="380" />
+        <di:waypoint x="1348" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_os78iv6b_di" bpmnElement="task_os78iv6b">
+        <dc:Bounds x="1528" y="340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_ss5xud12_di" bpmnElement="flow_ss5xud12">
+        <di:waypoint x="1448" y="380" />
+        <di:waypoint x="1528" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_6pqzfjhq_di" bpmnElement="task_6pqzfjhq">
+        <dc:Bounds x="268" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_mrxo71hv_di" bpmnElement="flow_mrxo71hv">
+        <di:waypoint x="1578" y="420" />
+        <di:waypoint x="1578" y="450" />
+        <di:waypoint x="318" y="450" />
+        <di:waypoint x="318" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_qvf1cu98_di" bpmnElement="task_qvf1cu98">
+        <dc:Bounds x="448" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_9670frhi_di" bpmnElement="flow_9670frhi">
+        <di:waypoint x="368" y="520" />
+        <di:waypoint x="448" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_qiio1onj_di" bpmnElement="task_qiio1onj">
+        <dc:Bounds x="628" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_kmfte575_di" bpmnElement="flow_kmfte575">
+        <di:waypoint x="548" y="520" />
+        <di:waypoint x="628" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_u56ytuud_di" bpmnElement="task_u56ytuud">
+        <dc:Bounds x="808" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_08izkgwq_di" bpmnElement="flow_08izkgwq">
+        <di:waypoint x="728" y="520" />
+        <di:waypoint x="808" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_9ysfebuy_di" bpmnElement="task_9ysfebuy">
+        <dc:Bounds x="988" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_t8qbq89b_di" bpmnElement="flow_t8qbq89b">
+        <di:waypoint x="908" y="520" />
+        <di:waypoint x="988" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_omwgadpp_di" bpmnElement="task_omwgadpp">
+        <dc:Bounds x="1168" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_5604g12a_di" bpmnElement="flow_5604g12a">
+        <di:waypoint x="1088" y="520" />
+        <di:waypoint x="1168" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_lycwgqd0_di" bpmnElement="task_lycwgqd0">
+        <dc:Bounds x="1348" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_533pbfki_di" bpmnElement="flow_533pbfki">
+        <di:waypoint x="1268" y="520" />
+        <di:waypoint x="1348" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_f4u63qu4_di" bpmnElement="task_f4u63qu4">
+        <dc:Bounds x="1528" y="480" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_q7s7bbq9_di" bpmnElement="flow_q7s7bbq9">
+        <di:waypoint x="1448" y="520" />
+        <di:waypoint x="1528" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_t2x2s1nr_di" bpmnElement="task_t2x2s1nr">
+        <dc:Bounds x="268" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_wyp2rtot_di" bpmnElement="flow_wyp2rtot">
+        <di:waypoint x="1578" y="560" />
+        <di:waypoint x="1578" y="590" />
+        <di:waypoint x="318" y="590" />
+        <di:waypoint x="318" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_g5cxnxsq_di" bpmnElement="task_g5cxnxsq">
+        <dc:Bounds x="448" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_74l8mdth_di" bpmnElement="flow_74l8mdth">
+        <di:waypoint x="368" y="660" />
+        <di:waypoint x="448" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_n2ejoapi_di" bpmnElement="task_n2ejoapi">
+        <dc:Bounds x="628" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_xewe0oo7_di" bpmnElement="flow_xewe0oo7">
+        <di:waypoint x="548" y="660" />
+        <di:waypoint x="628" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_jlrbt7si_di" bpmnElement="task_jlrbt7si">
+        <dc:Bounds x="808" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_58cvxj4p_di" bpmnElement="flow_58cvxj4p">
+        <di:waypoint x="728" y="660" />
+        <di:waypoint x="808" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_it5yirc8_di" bpmnElement="task_it5yirc8">
+        <dc:Bounds x="988" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_dcgbt76a_di" bpmnElement="flow_dcgbt76a">
+        <di:waypoint x="908" y="660" />
+        <di:waypoint x="988" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_emr2fiu3_di" bpmnElement="task_emr2fiu3">
+        <dc:Bounds x="1168" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_mkz4c8g9_di" bpmnElement="flow_mkz4c8g9">
+        <di:waypoint x="1088" y="660" />
+        <di:waypoint x="1168" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_501f026j_di" bpmnElement="task_501f026j">
+        <dc:Bounds x="1348" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_le5opju7_di" bpmnElement="flow_le5opju7">
+        <di:waypoint x="1268" y="660" />
+        <di:waypoint x="1348" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_d9ely48h_di" bpmnElement="task_d9ely48h">
+        <dc:Bounds x="1528" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_hzlg55nw_di" bpmnElement="flow_hzlg55nw">
+        <di:waypoint x="1448" y="660" />
+        <di:waypoint x="1528" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_l7s0j9gt_di" bpmnElement="task_l7s0j9gt">
+        <dc:Bounds x="268" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_x5ts1e19_di" bpmnElement="flow_x5ts1e19">
+        <di:waypoint x="1578" y="700" />
+        <di:waypoint x="1578" y="730" />
+        <di:waypoint x="318" y="730" />
+        <di:waypoint x="318" y="760" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_u4iuomhb_di" bpmnElement="task_u4iuomhb">
+        <dc:Bounds x="448" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_lq5ja0na_di" bpmnElement="flow_lq5ja0na">
+        <di:waypoint x="368" y="800" />
+        <di:waypoint x="448" y="800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_tm9f7oms_di" bpmnElement="task_tm9f7oms">
+        <dc:Bounds x="628" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_g80u9alc_di" bpmnElement="flow_g80u9alc">
+        <di:waypoint x="548" y="800" />
+        <di:waypoint x="628" y="800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_qn28mwse_di" bpmnElement="task_qn28mwse">
+        <dc:Bounds x="808" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_f6pnn0jl_di" bpmnElement="flow_f6pnn0jl">
+        <di:waypoint x="728" y="800" />
+        <di:waypoint x="808" y="800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_xjzg9op0_di" bpmnElement="task_xjzg9op0">
+        <dc:Bounds x="988" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_wt0h15v4_di" bpmnElement="flow_wt0h15v4">
+        <di:waypoint x="908" y="800" />
+        <di:waypoint x="988" y="800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_c82zg2kc_di" bpmnElement="task_c82zg2kc">
+        <dc:Bounds x="1168" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_uz6ylp25_di" bpmnElement="flow_uz6ylp25">
+        <di:waypoint x="1088" y="800" />
+        <di:waypoint x="1168" y="800" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

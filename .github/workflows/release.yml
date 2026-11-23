@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl,  os: ubuntu-latest,     smoke: true,  musl: true }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm,  smoke: true,  musl: true }
+          - { target: aarch64-apple-darwin,       os: macos-latest,      smoke: true }
+          - { target: x86_64-apple-darwin,        os: macos-latest,      smoke: false }
+          - { target: x86_64-pc-windows-msvc,     os: windows-latest,    smoke: true,  exe: .exe }
+          - { target: aarch64-pc-windows-msvc,    os: windows-11-arm,    smoke: true,  exe: .exe }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl tools
+        if: matrix.musl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked -p ex-index --target ${{ matrix.target }}
+      - name: Check static linking (linux)
+        if: matrix.musl
+        run: |
+          file target/${{ matrix.target }}/release/ex-index
+          ! ldd target/${{ matrix.target }}/release/ex-index 2>/dev/null | grep -q '=>'
+      - name: Smoke test (/healthz with no other files present)
+        if: matrix.smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          cp "target/${{ matrix.target }}/release/ex-index${{ matrix.exe }}" "$work/"
+          cd "$work"
+          "./ex-index${{ matrix.exe }}" serve --host 127.0.0.1 --port 7700 --data-dir ./data &
+          pid=$!
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:7700/healthz; then ok=1; break; fi
+            sleep 0.2
+          done
+          kill $pid || true
+          test "${ok:-0}" = 1
+      - name: Package
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="ex-index-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          cp "target/${{ matrix.target }}/release/ex-index${{ matrix.exe }}" README.md LICENSE-MIT LICENSE-APACHE "dist/$name/"
+          cd dist
+          if [ "${{ matrix.exe }}" = ".exe" ]; then
+            7z a "$name.zip" "$name" >/dev/null
+            echo "file=dist/$name.zip" >> "$GITHUB_OUTPUT"
+          else
+            tar czf "$name.tar.gz" "$name"
+            echo "file=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ steps.pkg.outputs.file }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

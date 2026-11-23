@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = ["crates/ex-index-core", "crates/ex-index"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.85"
+
+[workspace.dependencies]
+ex-index-core = { path = "crates/ex-index-core", version = "0.1.0" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+parking_lot = "0.13.0"
+rayon = "1.12.0"
+memmap2 = "0.9.12"
+tracing = "0.1.44"
+tempfile = "3.27.0"
+
+# Keep the numeric core fast in dev/test builds (Vamana/PQ tests run thousands of vectors).
+[profile.dev.package.ex-index-core]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = "symbols"

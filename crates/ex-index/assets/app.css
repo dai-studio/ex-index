@@ -1,0 +1,42 @@
+/* ex-index admin layout. Components come from shadcn-html (assets/shadcn). */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+}
+a { color: inherit; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+.topbar { border-bottom: 1px solid var(--border); background: var(--card); }
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; flex-wrap: wrap; }
+.brand { font-weight: 700; text-decoration: none; letter-spacing: -0.01em; font-size: 1rem; }
+.brand small { color: var(--muted-foreground); font-weight: 400; margin-left: 6px; }
+.nav { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.nav form { margin: 0; }
+main.container { padding-top: 24px; padding-bottom: 48px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.page-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
+.page-head p { margin: 4px 0 0; color: var(--muted-foreground); }
+.stack { display: grid; gap: 16px; }
+.grid-stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 16px; }
+.grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.row-actions form { margin: 0; }
+.inline-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.inline-form .form-field { flex: 1 1 200px; }
+.mono, pre, code, textarea.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 12.5px; }
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: var(--muted); border-radius: var(--radius-md, 6px); padding: 12px; max-height: 360px; overflow: auto; }
+.muted { color: var(--muted-foreground); }
+.empty { text-align: center; padding: 32px 16px; color: var(--muted-foreground); }
+.flash { margin-bottom: 16px; }
+details.advanced summary { cursor: pointer; color: var(--muted-foreground); margin: 4px 0 8px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.kv dt { color: var(--muted-foreground); }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.table-container { overflow-x: auto; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.login { max-width: 420px; margin: 48px auto; }
