@@ -618,6 +618,11 @@ impl Index {
     /// Top-k search, best-first, with raw per-metric scores.
     pub fn search(&self, req: &SearchRequest) -> Result<Vec<SearchHit>> {
         let l_search = req.effective_l_search(&self.config)?;
+        if req.text.is_some() {
+            return Err(Error::invalid(
+                "text queries must be embedded before reaching the store",
+            ));
+        }
         let q = self.config.prepare_vector(&req.vector)?;
         self.check_open()?;
         let metric = self.config.metric;

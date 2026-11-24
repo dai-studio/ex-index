@@ -93,9 +93,10 @@ fn main() {
             let idx = cat
                 .create(CreateIndexRequest {
                     name: "bench".into(),
-                    dimension: d as u32,
+                    dimension: Some(d as u32),
                     metric,
                     params: None,
+                    embedding_model: None,
                 })
                 .expect("create");
             let recs: Vec<VectorRecord> = data

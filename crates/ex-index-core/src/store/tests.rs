@@ -17,13 +17,14 @@ fn opts(small: usize) -> StoreOptions {
 fn create(cat: &Catalog, name: &str, dim: u32, metric: Metric) -> Arc<Index> {
     cat.create(CreateIndexRequest {
         name: name.into(),
-        dimension: dim,
+        dimension: Some(dim),
         metric,
         params: Some(IndexParamsInput {
             r: Some(32),
             l_build: Some(64),
             ..Default::default()
         }),
+        embedding_model: None,
     })
     .unwrap()
 }
@@ -62,9 +63,10 @@ fn crud_small_mode() {
     assert!(matches!(
         cat.create(CreateIndexRequest {
             name: "docs".into(),
-            dimension: 4,
+            dimension: Some(4),
             metric: Metric::Cosine,
-            params: None
+            params: None,
+            embedding_model: None,
         }),
         Err(Error::Conflict(_))
     ));

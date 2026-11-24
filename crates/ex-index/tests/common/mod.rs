@@ -51,6 +51,7 @@ impl TestServer {
 }
 
 pub fn client() -> reqwest::Client {
+    ex_index::embed::install_crypto_provider();
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .build()

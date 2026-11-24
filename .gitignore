@@ -3,3 +3,4 @@
 /data
 *.pdb
 .DS_Store
+.envrc

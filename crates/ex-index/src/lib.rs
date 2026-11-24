@@ -6,6 +6,7 @@ pub mod api;
 pub mod assets;
 pub mod auth;
 pub mod config;
+pub mod embed;
 pub mod error;
 pub mod telemetry;
 pub mod ui;
@@ -33,6 +34,7 @@ pub struct AppState {
     pub catalog: Arc<Catalog>,
     pub auth: Arc<auth::Auth>,
     pub metrics: metrics_exporter_prometheus::PrometheusHandle,
+    pub embedder: embed::SharedEmbedder,
 }
 
 /// Build the full router.
@@ -86,11 +88,17 @@ pub async fn serve(
         catalog: catalog.clone(),
         auth: Arc::new(auth::Auth::new(args.api_key.clone())?),
         metrics: telemetry::handle(),
+        embedder: Arc::new(embed::Embedder::new(
+            &args.cloudflare_api_base,
+            args.cloudflare_account_id.clone(),
+            args.cloudflare_api_token.clone(),
+        )?),
     };
     tracing::info!(
         addr = %listener.local_addr()?,
         data_dir = %args.data_dir.display(),
         auth = state.auth.enabled(),
+        cloudflare_embeddings = state.embedder.configured(),
         indexes = catalog.list().len(),
         "ex-index {VERSION} listening"
     );

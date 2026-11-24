@@ -6,7 +6,9 @@ indexes, add embedding vectors with JSON metadata, and search by **cosine**, **e
 **dot-product** similarity, either through a versioned JSON REST API or a server-rendered admin
 UI.
 
-- One self-contained executable. Templates and CSS are embedded, and there is no C/C++ FFI.
+- One self-contained executable. Templates, CSS and TLS root certificates are embedded.
+- Optional text embedding through Cloudflare Workers AI: add documents as text and search by
+  text.
 - All state lives under `--data-dir`. Writes are fsynced to a WAL before they are acknowledged
   and become searchable immediately.
 - Optional bearer API key covering `/v1`, `/ui` and `/metrics`.
@@ -49,6 +51,8 @@ The admin UI is at <http://localhost:7700/ui>.
 | `--api-key` | `EX_INDEX_API_KEY` | unset (auth off) | Require `Authorization: Bearer <key>` |
 | `--delta-threshold` | `EX_INDEX_DELTA_THRESHOLD` | `50000` | Rebuild in the background once the in-memory delta holds this many vectors |
 | `--log-level` | `EX_INDEX_LOG_LEVEL` | `info` | `tracing` filter, e.g. `debug` or `ex_index=debug` |
+| `--cloudflare-account-id` | `CLOUDFLARE_ACCOUNT_ID` | unset | Cloudflare account for Workers AI embeddings |
+| `--cloudflare-api-token` | `CLOUDFLARE_API_TOKEN` | unset | API token with Workers AI access |
 
 On SIGINT or SIGTERM the server stops accepting connections, drains in-flight requests, fsyncs
 every WAL and closes the index files.
@@ -65,6 +69,41 @@ every WAL and closes the index files.
 | `alpha` | 1.2 | RobustPrune slack |
 | `pq_subvectors` | `ceil(dimension/4)` | PQ bytes per vector held in RAM |
 | `l_search` | 100 | default search candidate list size |
+
+**Embedding model.** Set `embedding_model` when you create an index to have ex-index embed
+text for you with Cloudflare Workers AI. `dimension` can then be omitted (it is taken from the
+model) and must match the model if given. The model is fixed for the life of the index.
+
+| `embedding_model` | dimension | max texts per Cloudflare call |
+|---|---|---|
+| `@cf/qwen/qwen3-embedding-0.6b` | 1024 | 32 |
+| `@cf/baai/bge-m3` | 1024 | 32 |
+| `@cf/baai/bge-small-en-v1.5` | 384 | 100 |
+| `@cf/baai/bge-base-en-v1.5` | 768 | 100 |
+| `@cf/baai/bge-large-en-v1.5` | 1024 | 100 |
+
+Such an index accepts `POST /documents` with text, and `search` with `"text"` instead of
+`"vector"`. Larger requests are split into batches automatically. Documents are sent in the
+`text` field; search queries for qwen3 go in the `queries` field (which applies its retrieval
+instruction), for the other models in `text`. The bge `en` models read at most 512 tokens per
+text. Plain vectors can still be upserted into these indexes. The server needs
+`CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; without them these calls return 503.
+The text itself is not stored; put it in `metadata` if you want it back in search results.
+
+```sh
+export CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=...
+./target/release/ex-index serve
+
+curl -s -X POST localhost:7700/v1/indexes -H 'content-type: application/json' \
+  -d '{"name":"stories","metric":"cosine","embedding_model":"@cf/baai/bge-base-en-v1.5"}'
+curl -s -X POST localhost:7700/v1/indexes/stories/documents -H 'content-type: application/json' -d '{
+  "documents": [
+    {"id": "cloud", "text": "This is a story about an orange cloud", "metadata": {"title": "Cloud"}},
+    {"id": "llama", "text": "This is a story about a llama"}
+  ]}'
+curl -s -X POST localhost:7700/v1/indexes/stories/search -H 'content-type: application/json' \
+  -d '{"text": "orange sky", "k": 1}'
+```
 
 **Vectors.** Each vector has a string `id` (1–256 chars), `vector` (exactly `dimension` finite
 floats) and optional `metadata` (a JSON object, ≤ 64 KiB). Upserting an existing id replaces it.
@@ -102,24 +141,26 @@ Every route under `/v1` takes and returns JSON. When an API key is set, add
 `-H 'authorization: Bearer <key>'`. Errors look like this:
 
 ```json
-{"error": {"code": "invalid_argument | not_found | conflict | unauthorized | internal", "message": "..."}}
+{"error": {"code": "invalid_argument | not_found | conflict | unauthorized | upstream | unavailable | internal", "message": "..."}}
 ```
 
 | Method & path | Body | Success | Errors |
 |---|---|---|---|
-| `POST /v1/indexes` | `{name, dimension, metric, params?}` | 201 `IndexInfo` | 400, 409 |
+| `POST /v1/indexes` | `{name, dimension?, metric, params?, embedding_model?}` | 201 `IndexInfo` | 400, 409 |
 | `GET /v1/indexes` | | 200 `{indexes: [IndexInfo]}` | |
 | `GET /v1/indexes/{name}` | | 200 `IndexInfo` | 404 |
 | `DELETE /v1/indexes/{name}` | | 204 | 404 |
 | `POST /v1/indexes/{name}/vectors` | `{vectors: [VectorRecord]}` (≤ 10k) | 200 `{upserted}` | 400, 404, 413 |
+| `POST /v1/indexes/{name}/documents` | `{documents: [{id, text, metadata?}]}` (≤ 1000) | 200 `{upserted}` | 400, 404, 502 Cloudflare error, 503 not configured |
 | `GET /v1/indexes/{name}/vectors/{id}` | | 200 `VectorRecord` | 404 |
 | `DELETE /v1/indexes/{name}/vectors/{id}` | | 204 | 404 |
-| `POST /v1/indexes/{name}/search` | `SearchRequest` | 200 `{hits, took_ms}` | 400, 404 |
+| `POST /v1/indexes/{name}/search` | `SearchRequest` | 200 `{hits, took_ms}` | 400, 404, 502, 503 |
 | `POST /v1/indexes/{name}/build` | | 202 `IndexInfo` (`status: building`) | 404, 409 if already building |
 | `GET /healthz` | | 200 `{status: "ok", version}` | (never needs auth) |
 | `GET /metrics` | | 200 Prometheus text | 401 |
 
 `SearchRequest`: `{"vector": [...], "k": 10, "l_search": null, "filter": null, "include_vector": false, "include_metadata": true}`.
+Instead of `vector`, an index with an `embedding_model` accepts `"text": "..."`.
 `k` must be 1–1000. If you set `l_search`, it must be ≥ `k`. A larger `l_search` gives better
 recall at the cost of latency.
 
@@ -144,8 +185,9 @@ The UI is plain server-rendered HTML (askama templates styled with
 
 - `/ui`: all indexes, with open, rebuild and delete actions.
 - `/ui/new`: create an index.
-- `/ui/indexes/{name}`: stats, configuration, JSON upsert, and lookup or delete by id.
-- `/ui/indexes/{name}/search`: search playground.
+- `/ui/indexes/{name}`: stats, configuration, JSON upsert, and lookup or delete by id. Indexes
+  with an embedding model also get an "Add documents" form for text.
+- `/ui/indexes/{name}/search`: search playground (by text when the index has a model).
 
 When an API key is set, `/ui/login` exchanges the key for an `HttpOnly; SameSite=Strict` cookie.
 The cookie holds an HMAC of the key, never the key itself. Every form post carries a CSRF token.

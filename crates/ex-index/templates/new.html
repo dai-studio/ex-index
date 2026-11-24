@@ -17,8 +17,19 @@
         <p class="field-description">Lowercase letters, digits, <code>_</code> and <code>-</code>; up to 64 characters.</p>
       </div>
       <div class="form-field">
+        <label class="label" for="embedding_model">Embedding model</label>
+        <select class="select" id="embedding_model" name="embedding_model">
+          <option value="" {% if embedding_model.is_empty() %}selected{% endif %}>None (I'll send my own vectors)</option>
+          {% for m in models %}
+          <option value="{{ m.id }}" {% if embedding_model == m.id %}selected{% endif %}>{{ m.id }} ({{ m.dimension }} dims)</option>
+          {% endfor %}
+        </select>
+        <p class="field-description">Cloudflare Workers AI model used to embed text you add and text queries. Sets the dimension automatically.</p>
+      </div>
+      <div class="form-field">
         <label class="label" for="dimension">Dimension</label>
-        <input class="input" id="dimension" name="dimension" type="number" min="1" max="4096" required value="{{ dimension }}" placeholder="768">
+        <input class="input" id="dimension" name="dimension" type="number" min="1" max="4096" value="{{ dimension }}" placeholder="768">
+        <p class="field-description">Required without an embedding model; leave blank to use the model's dimension.</p>
       </div>
       <div class="form-field">
         <label class="label" for="metric">Metric</label>

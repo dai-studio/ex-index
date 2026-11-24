@@ -48,6 +48,20 @@ pub struct ServeArgs {
         hide = true
     )]
     pub small_index_threshold: usize,
+    /// Cloudflare account id for Workers AI embeddings.
+    #[arg(long, env = "CLOUDFLARE_ACCOUNT_ID")]
+    pub cloudflare_account_id: Option<String>,
+    /// Cloudflare API token with Workers AI read access.
+    #[arg(long, env = "CLOUDFLARE_API_TOKEN", hide_env_values = true)]
+    pub cloudflare_api_token: Option<String>,
+    /// Cloudflare API base URL (testing knob).
+    #[arg(
+        long,
+        env = "EX_INDEX_CLOUDFLARE_API_BASE",
+        default_value = crate::embed::DEFAULT_API_BASE,
+        hide = true
+    )]
+    pub cloudflare_api_base: String,
 }
 
 impl ServeArgs {
@@ -61,6 +75,9 @@ impl ServeArgs {
             delta_threshold: 50_000,
             log_level: "info".into(),
             small_index_threshold: 10_000,
+            cloudflare_account_id: None,
+            cloudflare_api_token: None,
+            cloudflare_api_base: crate::embed::DEFAULT_API_BASE.into(),
         }
     }
 }

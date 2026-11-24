@@ -1,6 +1,7 @@
 //! Wire / persisted data shapes (serde) and their validation rules.
 
 use crate::distance::{normalize, Metric};
+use crate::embedding::{self, supported_ids};
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -56,6 +57,10 @@ pub struct IndexConfig {
     pub dimension: u32,
     pub metric: Metric,
     pub params: IndexParams,
+    /// Hosted embedding model bound to this index (enables text upserts and
+    /// text queries). `None` = vectors only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embedding_model: Option<String>,
 }
 
 /// Body of `POST /v1/indexes`.
@@ -63,10 +68,15 @@ pub struct IndexConfig {
 #[serde(deny_unknown_fields)]
 pub struct CreateIndexRequest {
     pub name: String,
-    pub dimension: u32,
+    /// Required unless `embedding_model` is set (then it defaults to the
+    /// model's output dimension and must match it if given).
+    #[serde(default)]
+    pub dimension: Option<u32>,
     pub metric: Metric,
     #[serde(default)]
     pub params: Option<IndexParamsInput>,
+    #[serde(default)]
+    pub embedding_model: Option<String>,
 }
 
 /// `^[a-z0-9_-]{1,64}$`
@@ -87,12 +97,39 @@ impl CreateIndexRequest {
     /// Apply defaults and validate every field.
     pub fn into_config(self) -> Result<IndexConfig> {
         validate_index_name(&self.name)?;
-        if self.dimension == 0 || self.dimension > MAX_DIMENSION {
+        let embedding_model = self
+            .embedding_model
+            .map(|m| m.trim().to_string())
+            .filter(|m| !m.is_empty());
+        let dimension = match (&embedding_model, self.dimension) {
+            (Some(id), dim) => {
+                let model = embedding::embedding_model(id).ok_or_else(|| {
+                    Error::invalid(format!(
+                        "unknown embedding_model {id:?}; supported: {}",
+                        supported_ids()
+                    ))
+                })?;
+                if let Some(d) = dim.filter(|&d| d != model.dimension) {
+                    return Err(Error::invalid(format!(
+                        "dimension {d} does not match {id}, which produces {} dimensions",
+                        model.dimension
+                    )));
+                }
+                model.dimension
+            }
+            (None, Some(d)) => d,
+            (None, None) => {
+                return Err(Error::invalid(
+                    "dimension is required unless embedding_model is set",
+                ))
+            }
+        };
+        if dimension == 0 || dimension > MAX_DIMENSION {
             return Err(Error::invalid(format!(
                 "dimension must be in 1..={MAX_DIMENSION}"
             )));
         }
-        let d = IndexParams::defaults_for(self.dimension);
+        let d = IndexParams::defaults_for(dimension);
         let p = self.params.unwrap_or_default();
         let params = IndexParams {
             r: p.r.unwrap_or(d.r),
@@ -103,9 +140,10 @@ impl CreateIndexRequest {
         };
         let cfg = IndexConfig {
             name: self.name,
-            dimension: self.dimension,
+            dimension,
             metric: self.metric,
             params,
+            embedding_model,
         };
         cfg.validate()?;
         Ok(cfg)
@@ -137,6 +175,18 @@ impl IndexConfig {
         }
         if !(1..=5000).contains(&p.l_search) {
             return Err(Error::invalid("params.l_search must be in 1..=5000"));
+        }
+        if let Some(id) = &self.embedding_model {
+            match embedding::embedding_model(id) {
+                Some(m) if m.dimension == self.dimension => {}
+                Some(m) => {
+                    return Err(Error::invalid(format!(
+                        "{id} produces {} dimensions, index has {}",
+                        m.dimension, self.dimension
+                    )))
+                }
+                None => return Err(Error::invalid(format!("unknown embedding_model {id:?}"))),
+            }
         }
         Ok(())
     }
@@ -237,7 +287,14 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SearchRequest {
+    /// Query vector. Leave empty when `text` is given.
+    #[serde(default)]
     pub vector: Vec<f32>,
+    /// Query text, embedded by the server with the index's embedding model.
+    /// The store itself only accepts vectors, so the server replaces this
+    /// with `vector` before searching.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
     #[serde(default = "default_k")]
     pub k: u32,
     #[serde(default)]
@@ -254,6 +311,7 @@ impl SearchRequest {
     pub fn new(vector: Vec<f32>, k: u32) -> Self {
         SearchRequest {
             vector,
+            text: None,
             k,
             l_search: None,
             filter: None,
@@ -345,6 +403,7 @@ mod tests {
     #[test]
     fn defaults_applied() {
         let c = req(json!({"name":"docs","dimension":10,"metric":"cosine"})).unwrap();
+        assert_eq!(c.embedding_model, None);
         assert_eq!(
             c.params,
             IndexParams {
@@ -377,6 +436,39 @@ mod tests {
             assert!(req(bad.clone()).is_err(), "{bad}");
         }
         assert!(req(json!({"name":"a-b_9","dimension":4096,"metric":"euclidean"})).is_ok());
+    }
+
+    #[test]
+    fn embedding_model_sets_dimension() {
+        let c = req(
+            json!({"name":"t","metric":"cosine","embedding_model":"@cf/baai/bge-base-en-v1.5"}),
+        )
+        .unwrap();
+        assert_eq!(c.dimension, 768);
+        assert_eq!(
+            c.embedding_model.as_deref(),
+            Some("@cf/baai/bge-base-en-v1.5")
+        );
+        let c = req(json!({"name":"t","dimension":1024,"metric":"dot","embedding_model":"@cf/qwen/qwen3-embedding-0.6b"}))
+            .unwrap();
+        assert_eq!(c.dimension, 1024);
+        // blank model = none
+        let c = req(json!({"name":"t","dimension":4,"metric":"dot","embedding_model":""})).unwrap();
+        assert_eq!(c.embedding_model, None);
+        for bad in [
+            json!({"name":"t","metric":"cosine"}),
+            json!({"name":"t","metric":"cosine","embedding_model":"@cf/nope"}),
+            json!({"name":"t","dimension":384,"metric":"cosine","embedding_model":"@cf/baai/bge-m3"}),
+        ] {
+            assert!(req(bad.clone()).is_err(), "{bad}");
+        }
+        // configs persisted before embedding_model existed still load
+        let old: IndexConfig = serde_json::from_value(json!({
+            "name":"o","dimension":3,"metric":"cosine",
+            "params":{"r":64,"l_build":100,"alpha":1.2,"pq_subvectors":1,"l_search":100}
+        }))
+        .unwrap();
+        assert_eq!(old.embedding_model, None);
     }
 
     #[test]

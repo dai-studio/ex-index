@@ -85,6 +85,7 @@ async fn kill9_restart_keeps_acknowledged_writes() {
     let data = dir.path().join("data");
     let port = free_port();
     let base = format!("http://127.0.0.1:{port}");
+    ex_index::embed::install_crypto_provider();
     let c = reqwest::Client::new();
 
     let mut child = spawn(&data, port);

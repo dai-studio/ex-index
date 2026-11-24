@@ -1,5 +1,6 @@
 //! `/v1` JSON endpoints and `/healthz`.
 
+use crate::embed::Purpose;
 use crate::error::{ApiError, ApiJson, ApiResult};
 use crate::AppState;
 use axum::extract::{Path, State};
@@ -7,11 +8,14 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use ex_index_core::embedding::embedding_model;
 use ex_index_core::models::{
-    CreateIndexRequest, IndexInfo, IndexList, SearchRequest, SearchResponse, UpsertRequest,
-    UpsertResponse, VectorRecord, MAX_UPSERT_BATCH,
+    validate_id, CreateIndexRequest, IndexConfig, IndexInfo, IndexList, SearchRequest,
+    SearchResponse, UpsertRequest, UpsertResponse, VectorRecord, MAX_METADATA_BYTES,
+    MAX_UPSERT_BATCH,
 };
-use serde_json::json;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
 use std::time::Instant;
 
 pub fn routes() -> Router<AppState> {
@@ -19,6 +23,7 @@ pub fn routes() -> Router<AppState> {
         .route("/v1/indexes", post(create_index).get(list_indexes))
         .route("/v1/indexes/{name}", get(get_index).delete(delete_index))
         .route("/v1/indexes/{name}/vectors", post(upsert))
+        .route("/v1/indexes/{name}/documents", post(upsert_documents))
         .route(
             "/v1/indexes/{name}/vectors/{id}",
             get(get_vector).delete(delete_vector),
@@ -85,6 +90,114 @@ async fn upsert(
     Ok(Json(UpsertResponse { upserted }))
 }
 
+/// Max documents per `POST /documents` request.
+pub const MAX_DOCUMENT_BATCH: usize = 1000;
+
+/// A text to embed with the index's embedding model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DocumentRecord {
+    pub id: String,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Map<String, Value>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpsertDocumentsRequest {
+    pub documents: Vec<DocumentRecord>,
+}
+
+fn model_for(
+    cfg: &IndexConfig,
+) -> Result<&'static ex_index_core::embedding::EmbeddingModel, ApiError> {
+    let id = cfg.embedding_model.as_deref().ok_or_else(|| {
+        ApiError::invalid(format!(
+            "index {} has no embedding_model; send vectors instead, or create an index with \"embedding_model\"",
+            cfg.name
+        ))
+    })?;
+    embedding_model(id).ok_or_else(|| ApiError::internal(format!("unknown embedding model {id}")))
+}
+
+/// Validate documents, embed their texts and return vector records. Validation
+/// runs first so a bad batch never costs an embedding call.
+pub async fn embed_documents(
+    s: &AppState,
+    cfg: &IndexConfig,
+    docs: Vec<DocumentRecord>,
+) -> ApiResult<Vec<VectorRecord>> {
+    let model = model_for(cfg)?;
+    if docs.len() > MAX_DOCUMENT_BATCH {
+        return Err(ApiError::invalid(format!(
+            "at most {MAX_DOCUMENT_BATCH} documents per request"
+        )));
+    }
+    for d in &docs {
+        validate_id(&d.id).map_err(|e| ApiError::invalid(format!("{e} (id {:?})", d.id)))?;
+        if d.text.trim().is_empty() {
+            return Err(ApiError::invalid(format!(
+                "text must not be empty (id {:?})",
+                d.id
+            )));
+        }
+        if let Some(m) = &d.metadata {
+            if serde_json::to_vec(m).map(|b| b.len()).unwrap_or(usize::MAX) > MAX_METADATA_BYTES {
+                return Err(ApiError::invalid(format!(
+                    "metadata exceeds {MAX_METADATA_BYTES} bytes (id {:?})",
+                    d.id
+                )));
+            }
+        }
+    }
+    let texts: Vec<String> = docs.iter().map(|d| d.text.clone()).collect();
+    let vectors = s.embedder.embed(model, &texts, Purpose::Document).await?;
+    Ok(docs
+        .into_iter()
+        .zip(vectors)
+        .map(|(d, vector)| VectorRecord {
+            id: d.id,
+            vector,
+            metadata: d.metadata,
+        })
+        .collect())
+}
+
+/// If the request carries `text`, embed it as a query and put it in `vector`.
+pub async fn resolve_query(
+    s: &AppState,
+    cfg: &IndexConfig,
+    req: &mut SearchRequest,
+) -> ApiResult<()> {
+    let Some(text) = req.text.take() else {
+        return Ok(());
+    };
+    if !req.vector.is_empty() {
+        return Err(ApiError::invalid("give either vector or text, not both"));
+    }
+    if text.trim().is_empty() {
+        return Err(ApiError::invalid("text must not be empty"));
+    }
+    let model = model_for(cfg)?;
+    let mut v = s.embedder.embed(model, &[text], Purpose::Query).await?;
+    req.vector = v.pop().unwrap_or_default();
+    Ok(())
+}
+
+async fn upsert_documents(
+    State(s): State<AppState>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<UpsertDocumentsRequest>,
+) -> ApiResult<Json<UpsertResponse>> {
+    let idx = s.catalog.get(&name)?;
+    let records = embed_documents(&s, idx.config(), req.documents).await?;
+    let upserted = blocking(move || idx.upsert(records)).await?;
+    metrics::counter!("ex_index_vectors_upserted_total", "index" => name)
+        .increment(upserted as u64);
+    Ok(Json(UpsertResponse { upserted }))
+}
+
 async fn get_vector(
     State(s): State<AppState>,
     Path((name, id)): Path<(String, String)>,
@@ -105,10 +218,11 @@ async fn delete_vector(
 async fn search(
     State(s): State<AppState>,
     Path(name): Path<String>,
-    ApiJson(req): ApiJson<SearchRequest>,
+    ApiJson(mut req): ApiJson<SearchRequest>,
 ) -> ApiResult<Json<SearchResponse>> {
     let idx = s.catalog.get(&name)?;
     let t0 = Instant::now();
+    resolve_query(&s, idx.config(), &mut req).await?;
     let hits = blocking(move || idx.search(&req)).await?;
     let took_ms = t0.elapsed().as_secs_f64() * 1000.0;
     metrics::histogram!("ex_index_search_seconds", "index" => name).record(took_ms / 1000.0);

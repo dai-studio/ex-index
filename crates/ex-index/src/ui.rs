@@ -1,6 +1,7 @@
 //! Server-rendered admin UI (askama + shadcn-html). Form posts call the same
 //! store functions as the REST API, then redirect (PRG) with a flash message.
 
+use crate::api::{embed_documents, resolve_query, DocumentRecord, UpsertDocumentsRequest};
 use crate::auth::Auth;
 use crate::AppState;
 use askama::Template;
@@ -9,6 +10,7 @@ use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Form, Router};
+use ex_index_core::embedding::EMBEDDING_MODELS;
 use ex_index_core::models::{
     CreateIndexRequest, IndexParamsInput, SearchRequest, UpsertRequest, VectorRecord,
 };
@@ -25,6 +27,7 @@ pub fn routes() -> Router<AppState> {
         .route("/ui/new", get(new_page).post(new_submit))
         .route("/ui/indexes/{name}", get(detail_page))
         .route("/ui/indexes/{name}/upsert", post(upsert_submit))
+        .route("/ui/indexes/{name}/documents", post(documents_submit))
         .route(
             "/ui/indexes/{name}/delete-vector",
             post(delete_vector_submit),
@@ -184,6 +187,21 @@ async fn indexes_page(
 
 struct NewPage;
 
+pub struct ModelOpt {
+    pub id: &'static str,
+    pub dimension: u32,
+}
+
+fn model_opts() -> Vec<ModelOpt> {
+    EMBEDDING_MODELS
+        .iter()
+        .map(|m| ModelOpt {
+            id: m.id,
+            dimension: m.dimension,
+        })
+        .collect()
+}
+
 impl NewPage {
     fn with(layout: Layout, f: &Params) -> NewPageView {
         let g = |k: &str| f.get(k).cloned().unwrap_or_default();
@@ -192,6 +210,8 @@ impl NewPage {
             name: g("name"),
             dimension: g("dimension"),
             metric: f.get("metric").cloned().unwrap_or_else(|| "cosine".into()),
+            embedding_model: g("embedding_model"),
+            models: model_opts(),
             r: g("r"),
             l_build: g("l_build"),
             alpha: g("alpha"),
@@ -208,6 +228,8 @@ struct NewPageView {
     name: String,
     dimension: String,
     metric: String,
+    embedding_model: String,
+    models: Vec<ModelOpt>,
     r: String,
     l_build: String,
     alpha: String,
@@ -238,7 +260,14 @@ fn parse_create(f: &Params) -> Result<CreateIndexRequest, String> {
         .get("metric")
         .and_then(|m| Metric::parse(m))
         .ok_or("metric must be cosine, euclidean or dot")?;
-    let dimension = opt_num::<u32>(f, "dimension")?.ok_or("dimension is required")?;
+    let embedding_model = f
+        .get("embedding_model")
+        .map(|m| m.trim().to_string())
+        .filter(|m| !m.is_empty());
+    let dimension = opt_num::<u32>(f, "dimension")?;
+    if dimension.is_none() && embedding_model.is_none() {
+        return Err("dimension is required unless an embedding model is chosen".into());
+    }
     Ok(CreateIndexRequest {
         name: f
             .get("name")
@@ -255,6 +284,7 @@ fn parse_create(f: &Params) -> Result<CreateIndexRequest, String> {
             pq_subvectors: opt_num(f, "pq_subvectors")?,
             l_search: opt_num(f, "l_search")?,
         }),
+        embedding_model,
     })
 }
 
@@ -309,6 +339,8 @@ struct DetailPage {
     cfg_alpha: f32,
     cfg_pq: u32,
     cfg_l_search: u32,
+    embedding_model: String,
+    embed_ready: bool,
     example_vector: String,
     lookup_id: String,
     lookup_json: String,
@@ -368,6 +400,8 @@ async fn detail_page(
         cfg_alpha: c.params.alpha,
         cfg_pq: c.params.pq_subvectors,
         cfg_l_search: c.params.l_search,
+        embedding_model: c.embedding_model.clone().unwrap_or_default(),
+        embed_ready: s.embedder.configured(),
         example_vector: if c.dimension > 3 {
             format!("{}, …", ex.join(", "))
         } else {
@@ -415,6 +449,54 @@ async fn upsert_submit(
             &path,
             Ok(format!(
                 "Upserted {n} vector{}.",
+                if n == 1 { "" } else { "s" }
+            )),
+        ),
+        Err(e) => back(&path, Err(e)),
+    }
+}
+
+/// Accepts `[docs]`, `{"documents": [docs]}` or a single doc.
+pub fn parse_documents(text: &str) -> Result<Vec<DocumentRecord>, String> {
+    let v: serde_json::Value =
+        serde_json::from_str(text).map_err(|e| format!("invalid JSON: {e}"))?;
+    let res = if v.is_array() {
+        serde_json::from_value::<Vec<DocumentRecord>>(v)
+    } else if v.get("documents").is_some() {
+        serde_json::from_value::<UpsertDocumentsRequest>(v).map(|r| r.documents)
+    } else {
+        serde_json::from_value::<DocumentRecord>(v).map(|r| vec![r])
+    };
+    res.map_err(|e| format!("invalid documents: {e}"))
+}
+
+async fn documents_submit(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Path(name): Path<String>,
+    Form(f): Form<Params>,
+) -> Response {
+    if !csrf_ok(&s, &headers, &f) {
+        return forbidden();
+    }
+    let path = format!("/ui/indexes/{name}");
+    let docs = match parse_documents(f.get("documents").map(String::as_str).unwrap_or("")) {
+        Ok(d) => d,
+        Err(e) => return back(&path, Err(e)),
+    };
+    let idx = match s.catalog.get(&name) {
+        Ok(i) => i,
+        Err(e) => return back("/ui", Err(e.to_string())),
+    };
+    let records = match embed_documents(&s, idx.config(), docs).await {
+        Ok(r) => r,
+        Err(e) => return back(&path, Err(e.message)),
+    };
+    match run(move || idx.upsert(records)).await {
+        Ok(n) => back(
+            &path,
+            Ok(format!(
+                "Embedded and upserted {n} document{}.",
                 if n == 1 { "" } else { "s" }
             )),
         ),
@@ -507,6 +589,8 @@ struct SearchPage {
     metric: &'static str,
     dimension: u32,
     score_hint: &'static str,
+    embedding_model: String,
+    text: String,
     vector: String,
     k: String,
     l_search: String,
@@ -533,6 +617,8 @@ fn search_page_for(
             Metric::Euclidean => "score = L2 distance (lower is better)",
             Metric::Dot => "score = inner product (higher is better)",
         },
+        embedding_model: cfg.embedding_model.clone().unwrap_or_default(),
+        text: f.get("text").cloned().unwrap_or_default(),
         vector: f.get("vector").cloned().unwrap_or_default(),
         k: f.get("k").cloned().unwrap_or_else(|| "10".into()),
         l_search: f.get("l_search").cloned().unwrap_or_default(),
@@ -556,9 +642,19 @@ async fn search_page(
 }
 
 fn parse_search(f: &Params) -> Result<SearchRequest, String> {
-    let vector: Vec<f32> = serde_json::from_str(f.get("vector").map(String::as_str).unwrap_or(""))
-        .map_err(|e| format!("vector must be a JSON array of numbers: {e}"))?;
+    let text = f
+        .get("text")
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty());
+    let raw = f.get("vector").map(|v| v.trim()).unwrap_or("");
+    let vector: Vec<f32> = if raw.is_empty() && text.is_some() {
+        Vec::new()
+    } else {
+        serde_json::from_str(raw)
+            .map_err(|e| format!("vector must be a JSON array of numbers: {e}"))?
+    };
     let mut req = SearchRequest::new(vector, opt_num::<u32>(f, "k")?.unwrap_or(10));
+    req.text = text;
     req.l_search = opt_num(f, "l_search")?;
     if let Some(filt) = f.get("filter").map(|s| s.trim()).filter(|s| !s.is_empty()) {
         req.filter = Some(
@@ -582,7 +678,7 @@ async fn search_submit(
         Err(e) => return back("/ui", Err(e.to_string())),
     };
     let mut page = search_page_for(&s, &headers, &Params::new(), idx.config(), &f);
-    let req = match parse_search(&f) {
+    let mut req = match parse_search(&f) {
         Ok(r) => r,
         Err(e) => {
             page.layout.flash_err = e;
@@ -590,6 +686,10 @@ async fn search_submit(
         }
     };
     let t0 = Instant::now();
+    if let Err(e) = resolve_query(&s, idx.config(), &mut req).await {
+        page.layout.flash_err = e.message;
+        return (e.status, render(page)).into_response();
+    }
     match run(move || idx.search(&req)).await {
         Ok(hits) => {
             page.took = format!("{:.2}", t0.elapsed().as_secs_f64() * 1000.0);

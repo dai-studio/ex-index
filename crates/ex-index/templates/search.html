@@ -11,10 +11,21 @@
   <div class="card-content">
     <form class="form" method="post" action="/ui/indexes/{{ name }}/search">
       <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      {% if !embedding_model.is_empty() %}
+      <div class="form-field">
+        <label class="label" for="text">Query text <span class="label-hint">(embedded with {{ embedding_model }})</span></label>
+        <input class="input" id="text" name="text" value="{{ text }}" placeholder="a story about a cloud" autofocus>
+      </div>
+      <div class="form-field">
+        <label class="label" for="vector">…or query vector <span class="label-hint">(JSON array of {{ dimension }} numbers; used when the text is blank)</span></label>
+        <textarea class="textarea mono" id="vector" name="vector" rows="2">{{ vector }}</textarea>
+      </div>
+      {% else %}
       <div class="form-field">
         <label class="label" for="vector">Query vector (JSON array of {{ dimension }} numbers)</label>
         <textarea class="textarea mono" id="vector" name="vector" rows="4" required>{{ vector }}</textarea>
       </div>
+      {% endif %}
       <div class="grid-2">
         <div class="form-field">
           <label class="label" for="k">k</label>

@@ -16,6 +16,7 @@ pub mod bitset;
 pub mod brute;
 pub mod disk;
 pub mod distance;
+pub mod embedding;
 pub mod error;
 pub mod harness;
 pub mod models;

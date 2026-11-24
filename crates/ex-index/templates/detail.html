@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>{{ name }}</h1>
-    <p><span class="badge" data-variant="outline">{{ metric }}</span> · {{ dimension }} dimensions · {% if building %}<span class="badge" data-variant="secondary">building</span>{% else %}<span class="badge" data-variant="default">ready</span>{% endif %}</p>
+    <p><span class="badge" data-variant="outline">{{ metric }}</span> · {{ dimension }} dimensions{% if !embedding_model.is_empty() %} · <code>{{ embedding_model }}</code>{% endif %} · {% if building %}<span class="badge" data-variant="secondary">building</span>{% else %}<span class="badge" data-variant="default">ready</span>{% endif %}</p>
   </div>
   <div class="row-actions">
     <a class="btn" data-variant="default" href="/ui/indexes/{{ name }}/search">Search playground</a>
@@ -25,6 +25,25 @@
   <div class="card"><div class="card-content statistic"><p class="statistic-title">Deleted</p><p class="statistic-value">{{ deleted }}</p><p class="statistic-description">tombstones until rebuild</p></div></div>
   <div class="card"><div class="card-content statistic"><p class="statistic-title">On disk</p><p class="statistic-value">{{ size }}</p><p class="statistic-description">built {{ built_at }}</p></div></div>
 </div>
+
+{% if !embedding_model.is_empty() %}
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header"><h3 class="card-title">Add documents</h3><p class="card-description">Text is embedded with <code>{{ embedding_model }}</code> on Cloudflare Workers AI, then upserted. JSON array of <code>{"id", "text", "metadata"?}</code> records (up to 1,000). Existing ids are replaced.</p></div>
+  <div class="card-content">
+    {% if !embed_ready %}
+    <div class="alert" data-variant="destructive" style="margin-bottom:12px"><div class="alert-description">Cloudflare credentials are not configured. Start the server with <code>CLOUDFLARE_ACCOUNT_ID</code> and <code>CLOUDFLARE_API_TOKEN</code> set.</div></div>
+    {% endif %}
+    <form class="form" method="post" action="/ui/indexes/{{ name }}/documents">
+      <input type="hidden" name="csrf" value="{{ layout.csrf }}">
+      <div class="form-field">
+        <label class="label" for="documents">Documents</label>
+        <textarea class="textarea mono" id="documents" name="documents" rows="6" required placeholder='[{"id": "doc-1", "text": "This is a story about an orange cloud", "metadata": {"lang": "en"}}]'></textarea>
+      </div>
+      <div class="form-actions"><button class="btn" data-variant="default" type="submit">Embed &amp; upsert</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
 
 <div class="grid-2">
   <div class="card">
@@ -69,6 +88,7 @@
     <dl class="kv">
       <dt>metric</dt><dd>{{ metric }}</dd>
       <dt>dimension</dt><dd>{{ dimension }}</dd>
+      <dt>embedding model</dt><dd>{% if embedding_model.is_empty() %}none{% else %}<code>{{ embedding_model }}</code>{% endif %}</dd>
       <dt>R (max degree)</dt><dd>{{ cfg_r }}</dd>
       <dt>L (build)</dt><dd>{{ cfg_l_build }}</dd>
       <dt>α</dt><dd>{{ cfg_alpha }}</dd>

@@ -236,8 +236,13 @@
     <bpmn:sequenceFlow id="flow_wt0h15v4" sourceRef="task_qn28mwse" targetRef="task_xjzg9op0" />
     <bpmn:task id="task_c82zg2kc" name="Docs" dai:notes="README.md: quickstart, config table, concepts (params, scores, filter best-effort, lifecycle), full API reference with curl examples, UI, data-dir layout, RAM sizing per 1M vectors, benchmark table incl. the i.i.d. caveat, dev/CI/release. LICENSE-MIT, LICENSE-APACHE, CHANGELOG.md." dai:agentStatus="done" dai:planRef="task_t6j96udu">
       <bpmn:incoming>flow_uz6ylp25</bpmn:incoming>
+      <bpmn:outgoing>flow_tp79ajpn</bpmn:outgoing>
     </bpmn:task>
     <bpmn:sequenceFlow id="flow_uz6ylp25" sourceRef="task_xjzg9op0" targetRef="task_c82zg2kc" />
+    <bpmn:task id="task_7oxspjwm" name="Release v0.1.0" dai:notes="Done: version 0.1.0 in workspace, CHANGELOG.md, initial commit on main. NOT done (deliberately): git tag v0.1.0 — held until the Recall requirement decision is made (i.i.d. random data misses 0.95 at default l_search=100), and no GitHub remote exists yet to trigger release.yml. To finish: decide on recall, `git remote add origin …`, push, `git tag v0.1.0 &#38;&#38; git push --tags`." dai:agentStatus="todo" dai:planRef="task_c616vdlm">
+      <bpmn:incoming>flow_tp79ajpn</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="flow_tp79ajpn" sourceRef="task_c82zg2kc" targetRef="task_7oxspjwm" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
@@ -575,6 +580,13 @@
       <bpmndi:BPMNEdge id="flow_uz6ylp25_di" bpmnElement="flow_uz6ylp25">
         <di:waypoint x="1088" y="800" />
         <di:waypoint x="1168" y="800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="task_7oxspjwm_di" bpmnElement="task_7oxspjwm">
+        <dc:Bounds x="1348" y="760" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_tp79ajpn_di" bpmnElement="flow_tp79ajpn">
+        <di:waypoint x="1268" y="800" />
+        <di:waypoint x="1348" y="800" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
