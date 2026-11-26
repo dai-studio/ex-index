@@ -165,13 +165,14 @@ pub async fn embed_documents(
 }
 
 /// If the request carries `text`, embed it as a query and put it in `vector`.
+/// Returns the embedding time in milliseconds, or `None` for a vector query.
 pub async fn resolve_query(
     s: &AppState,
     cfg: &IndexConfig,
     req: &mut SearchRequest,
-) -> ApiResult<()> {
+) -> ApiResult<Option<f64>> {
     let Some(text) = req.text.take() else {
-        return Ok(());
+        return Ok(None);
     };
     if !req.vector.is_empty() {
         return Err(ApiError::invalid("give either vector or text, not both"));
@@ -180,9 +181,14 @@ pub async fn resolve_query(
         return Err(ApiError::invalid("text must not be empty"));
     }
     let model = model_for(cfg)?;
+    let t0 = Instant::now();
     let mut v = s.embedder.embed(model, &[text], Purpose::Query).await?;
     req.vector = v.pop().unwrap_or_default();
-    Ok(())
+    Ok(Some(ms_since(t0)))
+}
+
+pub fn ms_since(t0: Instant) -> f64 {
+    t0.elapsed().as_secs_f64() * 1000.0
 }
 
 async fn upsert_documents(
@@ -221,12 +227,17 @@ async fn search(
     ApiJson(mut req): ApiJson<SearchRequest>,
 ) -> ApiResult<Json<SearchResponse>> {
     let idx = s.catalog.get(&name)?;
+    let embed_ms = resolve_query(&s, idx.config(), &mut req).await?;
     let t0 = Instant::now();
-    resolve_query(&s, idx.config(), &mut req).await?;
     let hits = blocking(move || idx.search(&req)).await?;
-    let took_ms = t0.elapsed().as_secs_f64() * 1000.0;
-    metrics::histogram!("ex_index_search_seconds", "index" => name).record(took_ms / 1000.0);
-    Ok(Json(SearchResponse { hits, took_ms }))
+    let search_ms = ms_since(t0);
+    metrics::histogram!("ex_index_search_seconds", "index" => name).record(search_ms / 1000.0);
+    Ok(Json(SearchResponse {
+        hits,
+        took_ms: embed_ms.unwrap_or(0.0) + search_ms,
+        embed_ms,
+        search_ms,
+    }))
 }
 
 async fn build(

@@ -1,7 +1,9 @@
 //! Server-rendered admin UI (askama + shadcn-html). Form posts call the same
 //! store functions as the REST API, then redirect (PRG) with a flash message.
 
-use crate::api::{embed_documents, resolve_query, DocumentRecord, UpsertDocumentsRequest};
+use crate::api::{
+    embed_documents, ms_since, resolve_query, DocumentRecord, UpsertDocumentsRequest,
+};
 use crate::auth::Auth;
 use crate::AppState;
 use askama::Template;
@@ -598,6 +600,8 @@ struct SearchPage {
     searched: bool,
     hits: Vec<HitRow>,
     took: String,
+    embed_took: String,
+    search_took: String,
 }
 
 fn search_page_for(
@@ -626,6 +630,8 @@ fn search_page_for(
         searched: false,
         hits: Vec::new(),
         took: String::new(),
+        embed_took: String::new(),
+        search_took: String::new(),
     }
 }
 
@@ -685,14 +691,20 @@ async fn search_submit(
             return (StatusCode::BAD_REQUEST, render(page)).into_response();
         }
     };
+    let embed_ms = match resolve_query(&s, idx.config(), &mut req).await {
+        Ok(ms) => ms,
+        Err(e) => {
+            page.layout.flash_err = e.message;
+            return (e.status, render(page)).into_response();
+        }
+    };
     let t0 = Instant::now();
-    if let Err(e) = resolve_query(&s, idx.config(), &mut req).await {
-        page.layout.flash_err = e.message;
-        return (e.status, render(page)).into_response();
-    }
     match run(move || idx.search(&req)).await {
         Ok(hits) => {
-            page.took = format!("{:.2}", t0.elapsed().as_secs_f64() * 1000.0);
+            let search_ms = ms_since(t0);
+            page.took = format!("{:.2}", embed_ms.unwrap_or(0.0) + search_ms);
+            page.embed_took = embed_ms.map(|ms| format!("{ms:.2}")).unwrap_or_default();
+            page.search_took = format!("{search_ms:.2}");
             page.searched = true;
             page.hits = hits
                 .into_iter()

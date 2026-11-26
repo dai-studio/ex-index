@@ -164,6 +164,12 @@ async fn documents_and_text_search() {
         .await
         .unwrap();
     assert_eq!(r["hits"][0]["id"], "cloud", "{r}");
+    let (embed, search, took) = (
+        r["embed_ms"].as_f64().unwrap(),
+        r["search_ms"].as_f64().unwrap(),
+        r["took_ms"].as_f64().unwrap(),
+    );
+    assert!((took - (embed + search)).abs() < 1e-9, "{r}");
     let r: Value = c
         .post(s.url("/v1/indexes/docs/search"))
         .json(&json!({"text":"story about a llama","k":1,"filter":{"animal":true}}))
@@ -285,6 +291,7 @@ async fn documents_and_text_search() {
         .await
         .unwrap();
     assert!(html.contains(">emoji</a>"), "{html}");
+    assert!(html.contains("(embed "), "{html}");
 
     // the model survives a restart
     s.stop().await;

@@ -49,7 +49,7 @@
 <div class="card" style="margin-top:16px">
   <div class="card-header">
     <h3 class="card-title">Results</h3>
-    <p class="card-description">{{ hits.len() }} hit{% if hits.len() != 1 %}s{% endif %} in {{ took }} ms</p>
+    <p class="card-description">{{ hits.len() }} hit{% if hits.len() != 1 %}s{% endif %} in {{ took }} ms{% if !embed_took.is_empty() %} (embed {{ embed_took }} ms, search {{ search_took }} ms){% endif %}</p>
   </div>
   <div class="card-content">
     {% if hits.is_empty() %}
