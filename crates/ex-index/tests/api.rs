@@ -173,6 +173,8 @@ async fn rest_crud_and_search() {
     assert!((hits[2]["score"].as_f64().unwrap() - 2.9).abs() < 1e-5);
     assert_eq!(hits[0]["vector"], json!([3.0, 0.0, 0.0]));
     assert!(r["took_ms"].as_f64().unwrap() >= 0.0);
+    assert!(r["search_ms"].as_f64().unwrap() >= 0.0);
+    assert!(r.get("embed_ms").is_none());
     // filter
     let r: Value = c
         .post(s.url("/v1/indexes/docs/search"))

@@ -154,7 +154,7 @@ Every route under `/v1` takes and returns JSON. When an API key is set, add
 | `POST /v1/indexes/{name}/documents` | `{documents: [{id, text, metadata?}]}` (≤ 1000) | 200 `{upserted}` | 400, 404, 502 Cloudflare error, 503 not configured |
 | `GET /v1/indexes/{name}/vectors/{id}` | | 200 `VectorRecord` | 404 |
 | `DELETE /v1/indexes/{name}/vectors/{id}` | | 204 | 404 |
-| `POST /v1/indexes/{name}/search` | `SearchRequest` | 200 `{hits, took_ms}` | 400, 404, 502, 503 |
+| `POST /v1/indexes/{name}/search` | `SearchRequest` | 200 `{hits, took_ms, embed_ms?, search_ms}` | 400, 404, 502, 503 |
 | `POST /v1/indexes/{name}/build` | | 202 `IndexInfo` (`status: building`) | 404, 409 if already building |
 | `GET /healthz` | | 200 `{status: "ok", version}` | (never needs auth) |
 | `GET /metrics` | | 200 Prometheus text | 401 |

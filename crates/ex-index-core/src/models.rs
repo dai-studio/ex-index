@@ -348,7 +348,14 @@ pub struct SearchHit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResponse {
     pub hits: Vec<SearchHit>,
+    /// Total time: `embed_ms` (if any) plus `search_ms`.
     pub took_ms: f64,
+    /// Time spent embedding a `text` query; absent for vector queries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embed_ms: Option<f64>,
+    /// Time spent searching the index.
+    #[serde(default)]
+    pub search_ms: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

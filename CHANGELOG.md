@@ -17,6 +17,12 @@ All notable changes to this project are documented here. The format follows
 - `--cloudflare-account-id` / `CLOUDFLARE_ACCOUNT_ID` and `--cloudflare-api-token` /
   `CLOUDFLARE_API_TOKEN`.
 - Metrics `ex_index_embed_seconds` and `ex_index_embedded_texts_total`.
+- Search responses include `search_ms` and, for text queries, `embed_ms`; `took_ms` remains the
+  total. The admin UI shows the same split.
+
+### Changed
+- `ex_index_search_seconds` now measures only the index search, not query embedding (which is
+  in `ex_index_embed_seconds`).
 
 ### Fixed
 - Admin UI: link-styled buttons (e.g. "Create index") rendered dark text on a dark background.
